@@ -1,0 +1,522 @@
+{
+	"info": {
+		"_postman_id": "kidmate-api-collection",
+		"name": "KidMate API Collection",
+		"description": "Complete API collection for KidMate mobile app and admin dashboard",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "User Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"test22@gmail.com\",\n  \"password\": \"password\"\n}"
+						},
+						"description": "Login with user credentials. Returns token and user info. Copy the token to use in other requests."
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User Registration",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+1234567890\",\n  \"password\": \"password123\",\n  \"role\": \"parent\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Info",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"me"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Children & Parent Data",
+			"item": [
+				{
+					"name": "Get Children",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/get-children",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"get-children"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Child Attendance",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/get-child-attendance/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"get-child-attendance",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Child Grades",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/get-child-grades/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"get-child-grades",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Child Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/get-child-summary/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"get-child-summary",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Admin Endpoints",
+			"item": [
+				{
+					"name": "Get Unlinked Parents",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/get-unlinked-parents",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"get-unlinked-parents"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/get-users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"get-users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Link Parent to User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"parent_id\": 1,\n  \"user_email\": \"test22@gmail.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/link-parent-to-user",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"link-parent-to-user"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Parent",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Jane Smith\",\n  \"phone\": \"+1234567890\",\n  \"address\": \"123 Main St\",\n  \"occupation\": \"Teacher\",\n  \"relationship\": \"Mother\",\n  \"user_email\": \"jane.smith@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/add-parent",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"add-parent"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Kid",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Alice Smith\",\n  \"age\": 8,\n  \"grade\": \"Grade 3\",\n  \"school\": \"Elementary School\",\n  \"parent_id\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/add-kid",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"add-kid"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Pickup Management",
+			"item": [
+				{
+					"name": "Assign Pickup",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"kid_id\": 1,\n  \"pickup_person_id\": \"PICKUP001\",\n  \"pickup_person_name\": \"John Doe\",\n  \"pickup_time\": \"15:30:00\",\n  \"pickup_date\": \"2024-01-15\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/assign-pickup",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"assign-pickup"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Scan Pickup",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"pickup_id\": \"PICKUP001\",\n  \"scanned_at\": \"2024-01-15T15:30:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/scan-pickup",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"scan-pickup"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Journey & Status",
+			"item": [
+				{
+					"name": "Get All Journeys",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/get_all_journeys",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"get_all_journeys"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Journeys",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/get_user_journeys?user_id=1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"get_user_journeys"
+							],
+							"query": [
+								{
+									"key": "user_id",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/get_status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"get_status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Status",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"journey_id\": 1,\n  \"status\": \"completed\",\n  \"updated_at\": \"2024-01-15T16:00:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/update_status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"update_status"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Payments",
+			"item": [
+				{
+					"name": "Get Payments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/get_payments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"get_payments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Dummy Payments",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 1,\n  \"amount\": 50.00,\n  \"description\": \"Monthly fee\",\n  \"status\": \"paid\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/add_dummy_payments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"add_dummy_payments"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	]
+} 

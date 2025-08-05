@@ -1,0 +1,16 @@
+export default Object.freeze({
+  FEED: "Feed",
+  LISTINGS: "Listings",
+  LISTING_DETAILS: "ListingDetails",
+  LISTING_EDIT: "ListingEdit",
+  ACCOUNT: "Account",
+  MESSAGES: "Messages",
+  WELCOME: "Welcome",
+  LOGIN: "Login",
+  REGISTER: "Register",
+  MY_TASKS: "MyTasks",
+  ATTENDANCE_LIST: "AttendanceList",
+  GRADES_LIST: "GradesList",
+  PICKUP_PERSONS_LIST: "PickupPersonsList",
+  UPLOAD_PICKUP_PERSON: "UploadPickupPerson",
+});

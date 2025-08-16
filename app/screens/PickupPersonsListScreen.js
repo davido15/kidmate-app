@@ -12,38 +12,65 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import Screen from "../components/Screen";
-import { getPickupPersons, formatPickupDate, formatPickupTime } from "../api/pickup";
+import { getPickupPersons, formatPickupDate, formatPickupTime, togglePickupPersonStatus } from "../api/pickup";
 
-const PickupPersonItem = ({ item, onPress }) => {
+const PickupPersonItem = ({ item, onPress, onToggleStatus }) => {
   return (
-    <TouchableOpacity style={styles.pickupItem} onPress={() => onPress(item)}>
-      <View style={styles.pickupHeader}>
-        <View style={styles.pickupInfo}>
-          <Text style={styles.pickupName}>{item.name}</Text>
-          <Text style={styles.pickupRelationship}>Pickup Person</Text>
+    <View style={styles.pickupItem}>
+      <TouchableOpacity onPress={() => onPress(item)} style={styles.pickupContent}>
+        <View style={styles.pickupHeader}>
+          <View style={styles.pickupInfo}>
+            <Text style={styles.pickupName}>{item.name}</Text>
+            <Text style={styles.pickupRelationship}>Pickup Person</Text>
+          </View>
+          <View style={styles.pickupStatus}>
+            <MaterialIcons 
+              name={item.is_active ? "check-circle" : "cancel"} 
+              size={24} 
+              color={item.is_active ? "#4CAF50" : "#F44336"} 
+            />
+          </View>
         </View>
-        <View style={styles.pickupStatus}>
-          <MaterialIcons name="person" size={24} color="#007AFF" />
+        
+        <View style={styles.pickupDetails}>
+          <View style={styles.detailRow}>
+            <MaterialIcons name="child-care" size={16} color="#666" />
+            <Text style={styles.detailText}>{item.kid_name}</Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <MaterialIcons name="qr-code" size={16} color="#666" />
+            <Text style={styles.detailText}>Pickup ID: {item.pickup_id}</Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <MaterialIcons name="fingerprint" size={16} color="#666" />
+            <Text style={styles.detailText}>UUID: {item.uuid}</Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <MaterialIcons name="info" size={16} color="#666" />
+            <Text style={styles.detailText}>
+              Status: {item.is_active ? "Active" : "Inactive"}
+            </Text>
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
       
-      <View style={styles.pickupDetails}>
-        <View style={styles.detailRow}>
-          <MaterialIcons name="child-care" size={16} color="#666" />
-          <Text style={styles.detailText}>{item.kid_name}</Text>
-        </View>
-        
-        <View style={styles.detailRow}>
-          <MaterialIcons name="qr-code" size={16} color="#666" />
-          <Text style={styles.detailText}>Pickup ID: {item.pickup_id}</Text>
-        </View>
-        
-        <View style={styles.detailRow}>
-          <MaterialIcons name="fingerprint" size={16} color="#666" />
-          <Text style={styles.detailText}>UUID: {item.uuid}</Text>
-        </View>
+      <View style={styles.toggleContainer}>
+        <TouchableOpacity 
+          style={[
+            styles.toggleButton, 
+            { backgroundColor: item.is_active ? "#F44336" : "#4CAF50" }
+          ]}
+          onPress={() => onToggleStatus(item)}
+        >
+          <Text style={styles.toggleButtonText}>
+            {item.is_active ? "Deactivate" : "Activate"}
+          </Text>
+        </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 };
 
@@ -52,6 +79,30 @@ export default function PickupPersonsListScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+
+  // Add header with back button and add button
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      headerShown: true,
+      headerTitle: "Pickup Persons",
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{ marginLeft: 16, flexDirection: 'row', alignItems: 'center' }}
+        >
+          <Text style={{ color: '#007AFF', fontSize: 16, marginLeft: 4 }}>← Back</Text>
+        </TouchableOpacity>
+      ),
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate("UploadPickupPerson")}
+          style={{ marginRight: 16 }}
+        >
+          <Text style={{ color: '#007AFF', fontSize: 16 }}>Add New</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   const fetchPickupPersons = async () => {
     try {
@@ -84,9 +135,45 @@ export default function PickupPersonsListScreen({ navigation }) {
   const handlePickupPress = (pickupPerson) => {
     Alert.alert(
       "Pickup Person Details",
-      `Name: ${pickupPerson.name}\nChild: ${pickupPerson.kid_name}\nPickup ID: ${pickupPerson.pickup_id}\nUUID: ${pickupPerson.uuid}`,
+      `Name: ${pickupPerson.name}\nChild: ${pickupPerson.kid_name}\nPickup ID: ${pickupPerson.pickup_id}\nUUID: ${pickupPerson.uuid}\nStatus: ${pickupPerson.is_active ? "Active" : "Inactive"}`,
       [{ text: "OK" }]
     );
+  };
+
+  const handleToggleStatus = async (pickupPerson) => {
+    try {
+      const response = await togglePickupPersonStatus(pickupPerson.id);
+      
+      if (response.ok && response.data && response.data.success) {
+        // Update the local state to reflect the change
+        setPickupPersons(prevPersons => 
+          prevPersons.map(person => 
+            person.id === pickupPerson.id 
+              ? { ...person, is_active: !person.is_active }
+              : person
+          )
+        );
+        
+        Alert.alert(
+          "Success",
+          `Pickup person ${pickupPerson.name} has been ${!pickupPerson.is_active ? "activated" : "deactivated"}.`,
+          [{ text: "OK" }]
+        );
+      } else {
+        Alert.alert(
+          "Error",
+          response.data?.error || "Failed to update pickup person status",
+          [{ text: "OK" }]
+        );
+      }
+    } catch (error) {
+      console.error("Error toggling pickup person status:", error);
+      Alert.alert(
+        "Error",
+        "Network error. Please try again.",
+        [{ text: "OK" }]
+      );
+    }
   };
 
   if (loading) {
@@ -102,17 +189,6 @@ export default function PickupPersonsListScreen({ navigation }) {
 
   return (
     <Screen style={styles.screen}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <MaterialIcons name="arrow-back" size={24} color="#007AFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Pickup Persons</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
       {error ? (
         <View style={styles.errorContainer}>
           <MaterialIcons name="error" size={48} color="#FF3B30" />
@@ -140,7 +216,11 @@ export default function PickupPersonsListScreen({ navigation }) {
           data={pickupPersons}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
-            <PickupPersonItem item={item} onPress={handlePickupPress} />
+            <PickupPersonItem 
+              item={item} 
+              onPress={handlePickupPress} 
+              onToggleStatus={handleToggleStatus}
+            />
           )}
           contentContainerStyle={styles.listContainer}
           refreshControl={
@@ -156,28 +236,6 @@ export default function PickupPersonsListScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: {
     backgroundColor: "#F8F9FA",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: "#FFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
-  },
-  backButton: {
-    padding: 5,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: "600",
-    textAlign: "center",
-    color: "#333",
-  },
-  headerSpacer: {
-    width: 34,
   },
   loadingContainer: {
     flex: 1,
@@ -296,5 +354,25 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     color: "#666",
+  },
+  pickupContent: {
+    flex: 1,
+  },
+  toggleContainer: {
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+    paddingTop: 12,
+  },
+  toggleButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignItems: "center",
+  },
+  toggleButtonText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
 }); 

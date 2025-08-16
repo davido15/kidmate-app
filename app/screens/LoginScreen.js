@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 30,
     alignSelf: "center",
-    marginTop: 50,
+    marginTop: 20,
     color:"#2F3B52"
   },
   subtile: {
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   },
   logo2: {
     fontSize: 30,
-    marginTop: 50,
+    marginTop: 20,
     alignSelf: "center",
     justifyContent: "flex-end",
   },

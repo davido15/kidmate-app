@@ -35,4 +35,14 @@ export const formatPickupTime = (dateString) => {
   } catch (error) {
     return "Invalid Time";
   }
+};
+
+export const togglePickupPersonStatus = async (pickupPersonId) => {
+  try {
+    const response = await apiClient.put(`/api/toggle-pickup-person-status/${pickupPersonId}`);
+    return response;
+  } catch (error) {
+    console.error("Error toggling pickup person status:", error);
+    return { ok: false, error: "Failed to toggle pickup person status" };
+  }
 }; 

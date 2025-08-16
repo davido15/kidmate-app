@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   scrollViewContent: {
     flexGrow: 1,
     padding: 20,
-    paddingTop: 50,
+    paddingTop: 20,
     paddingBottom: 50,
   },
   title: {

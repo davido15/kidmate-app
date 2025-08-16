@@ -40,7 +40,7 @@ function ComplaintsListScreen({ navigation }) {
       console.log("🔍 Fetching complaints...");
       
       // Test the API endpoint first
-      const testResponse = await fetch("https://5d4c3ae2bc3e.ngrok-free.app/api/test");
+              const testResponse = await fetch("https://8c22148c8bbe.ngrok-free.app/api/test");
       console.log("🧪 Test endpoint response:", testResponse.status);
       
       const response = await getComplaints();

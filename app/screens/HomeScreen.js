@@ -220,6 +220,9 @@ function HomeScreen({ navigation }) {
       const response = await getChildSummary(childId);
       
       if (response.ok && response.data.success) {
+        console.log('Child summary data:', response.data);
+        console.log('Recent grades:', response.data.recent_grades);
+        console.log('Grades stats:', response.data.grades_stats);
         setChildSummary(response.data);
       } else {
         setError("Failed to load child summary");
@@ -387,40 +390,51 @@ function HomeScreen({ navigation }) {
         )}
 
                 {/* Section 3: Recent Attendance */}
-        {childSummary && childSummary.recent_attendance && childSummary.recent_attendance.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.attendanceTitle}>📝 Recent Attendance</Text>
-              <TouchableOpacity 
-                style={styles.viewAllButton}
-                onPress={() => {
-                  console.log('Navigating to AttendanceList with:', {
-                    childId: selectedChild.id,
-                    childName: selectedChild.name
-                  });
-                  navigation.navigate("AttendanceList", {
-                    childId: selectedChild.id,
-                    childName: selectedChild.name
-                  });
-                }}
-              >
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
-            </View>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.attendanceTitle}>📝 Recent Attendance</Text>
+            <TouchableOpacity 
+              style={styles.viewAllButton}
+              onPress={() => {
+                console.log('Navigating to AttendanceList with:', {
+                  childId: selectedChild.id,
+                  childName: selectedChild.name
+                });
+                navigation.navigate("AttendanceList", {
+                  childId: selectedChild.id,
+                  childName: selectedChild.name
+                });
+              }}
+            >
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          {childSummary && childSummary.recent_attendance && childSummary.recent_attendance.length > 0 ? (
             <AttendanceItem
               date={childSummary.recent_attendance[0].date}
               status={childSummary.recent_attendance[0].status}
               checkInTime={childSummary.recent_attendance[0].check_in_time}
               checkOutTime={childSummary.recent_attendance[0].check_out_time}
             />
-          </View>
-        )}
+          ) : (
+            <View style={styles.emptyAttendanceContainer}>
+              <Text style={styles.emptyAttendanceText}>No recent attendance records</Text>
+              <Text style={styles.emptyAttendanceSubtext}>Tap "View All" to see all attendance records</Text>
+            </View>
+          )}
+        </View>
 
                 {/* Section 4: Recent Grades */}
-        {childSummary && childSummary.recent_grades && childSummary.recent_grades.length > 0 && (
+        {(() => {
+          console.log('Rendering grades section check:');
+          console.log('- childSummary exists:', !!childSummary);
+          console.log('- recent_grades exists:', !!(childSummary && childSummary.recent_grades));
+          console.log('- recent_grades length:', childSummary?.recent_grades?.length);
+          return childSummary && childSummary.recent_grades && childSummary.recent_grades.length > 0;
+        })() && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.gradesTitle}>📚 Recent Grades</Text>
+              <Text style={styles.gradesTitle}>🏆 Highest Grade</Text>
               <TouchableOpacity 
                 style={styles.viewAllButton}
                 onPress={() => navigation.navigate("GradesList", {
@@ -437,6 +451,28 @@ function HomeScreen({ navigation }) {
               dateRecorded={childSummary.recent_grades[0].date_recorded}
               remarks={childSummary.recent_grades[0].remarks}
             />
+          </View>
+        )}
+
+        {/* Section 4c: No Recent Grades - Show Grades Access */}
+        {childSummary && (!childSummary.recent_grades || childSummary.recent_grades.length === 0) && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.gradesTitle}>🏆 Highest Grade</Text>
+              <TouchableOpacity 
+                style={styles.viewAllButton}
+                onPress={() => navigation.navigate("GradesList", {
+                  childId: selectedChild.id,
+                  childName: selectedChild.name
+                })}
+              >
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.emptyGradesContainer}>
+              <Text style={styles.emptyGradesText}>No grades available</Text>
+              <Text style={styles.emptyGradesSubtext}>Tap "View All" to see all grade records</Text>
+            </View>
           </View>
         )}
 
@@ -884,6 +920,40 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  emptyGradesContainer: {
+    backgroundColor: colors.light,
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyGradesText: {
+    fontSize: 16,
+    color: colors.medium,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  emptyGradesSubtext: {
+    fontSize: 14,
+    color: colors.light,
+    textAlign: 'center',
+  },
+  emptyAttendanceContainer: {
+    backgroundColor: colors.light,
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyAttendanceText: {
+    fontSize: 16,
+    color: colors.medium,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  emptyAttendanceSubtext: {
+    fontSize: 14,
+    color: colors.light,
+    textAlign: 'center',
   },
 });
 

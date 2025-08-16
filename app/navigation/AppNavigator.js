@@ -5,17 +5,48 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AccountNavigator from "./AccountNavigator";
 import FeedNavigator from "./FeedNavigator";
 import HistoryNavigator from "./HistoryNavigator";
+import PickupNavigator from "./PickupNavigator";
+import TrackNavigator from "./TrackNavigator";
 
 import PaymentScreen from "../screens/PaymentScreen";
-import UploadPickupPerson from "../screens/UploadPickupPerson";
-import StatusTrackingScreen from "../screens/StatusTrackingScreen";
-import PickupPersonsListScreen from "../screens/PickupPersonsListScreen"; // Added
-
+import TestGooglePlacesScreen from "../screens/TestGooglePlacesScreen";
 
 const Tab = createBottomTabNavigator();
 
 const AppNavigator = () => (
-  <Tab.Navigator>
+  <Tab.Navigator
+    screenOptions={{
+      tabBarActiveTintColor: "#2F3B52",
+      tabBarInactiveTintColor: "#666",
+      tabBarStyle: {
+        backgroundColor: "#fff",
+        borderTopWidth: 1,
+        borderTopColor: "#e0e0e0",
+        paddingBottom: 2,
+        paddingTop: 2,
+        height: 50,
+        position: 'absolute',
+        bottom: 20,
+        left: 0,
+        right: 0,
+        marginHorizontal: 10,
+        borderRadius: 15,
+        elevation: 8,
+        shadowColor: "#000",
+        shadowOffset: {
+          width: 0,
+          height: -2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+      },
+      tabBarLabelStyle: {
+        fontSize: 12,
+        fontWeight: "500",
+      },
+      headerShown: false,
+    }}
+  >
     <Tab.Screen
       name="Home"
       component={FeedNavigator}
@@ -40,8 +71,8 @@ const AppNavigator = () => (
     />
     <Tab.Screen
       name="Add Picker"
-      component={UploadPickupPerson}
-      options={({ navigation }) => ({
+      component={PickupNavigator}
+      options={{
         tabBarIcon: ({ color, size }) => (
           <MaterialCommunityIcons
             name="plus-outline"
@@ -49,14 +80,23 @@ const AppNavigator = () => (
             size={size}
           />
         ),
-      })}
+      }}
     />
     <Tab.Screen
       name="Track"
-      component={StatusTrackingScreen}
+      component={TrackNavigator}
       options={{
         tabBarIcon: ({ color, size }) => (
           <MaterialCommunityIcons name="progress-clock" color={color} size={size} />
+        ),
+      }}
+    />
+    <Tab.Screen
+      name="Test Places"
+      component={TestGooglePlacesScreen}
+      options={{
+        tabBarIcon: ({ color, size }) => (
+          <MaterialCommunityIcons name="map-marker" color={color} size={size} />
         ),
       }}
     />
@@ -75,16 +115,6 @@ const AppNavigator = () => (
       options={{
         tabBarIcon: ({ color, size }) => (
           <MaterialCommunityIcons name="account" color={color} size={size} />
-        ),
-      }}
-    />
-    <Tab.Screen
-      name="PickupPersonsList"
-      component={PickupPersonsListScreen}
-      options={{
-        tabBarButton: () => null, // Hide from tab bar
-        tabBarIcon: ({ color, size }) => (
-          <MaterialCommunityIcons name="list" color={color} size={size} />
         ),
       }}
     />

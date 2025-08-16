@@ -2,7 +2,7 @@ import cache from "../utility/cache";
 import authStorage from "../auth/storage";
 
 // Add baseURL for all requests
-const baseURL = "https://5d4c3ae2bc3e.ngrok-free.app";
+const baseURL = "https://bdf1812b29eb.ngrok-free.app";
 
 // Create a simple function for making GET requests
 const get = async (url, params, config = {}) => {
@@ -79,10 +79,39 @@ const post = async (url, body, config = {}) => {
   }
 };
 
-// Export the custom API client with get and post methods
+// Create a simple function for making PUT requests
+const put = async (url, body, config = {}) => {
+  try {
+    const authToken = await authStorage.getToken();
+    const headers = {
+      "Content-Type": "application/json",
+      ...config.headers,
+    };
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
+    }
+    const response = await fetch(`${baseURL}${url}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(body),
+      ...config,
+    });
+    const data = await response.json();
+    if (response.ok) {
+      return { ok: true, data };
+    }
+    return { ok: false, data: null };
+  } catch (error) {
+    console.error("Error making PUT request:", error);
+    return { ok: false, error: error.message };
+  }
+};
+
+// Export the custom API client with get, post, and put methods
 const apiClient = {
   get,
   post,
+  put,
 };
 
 export default apiClient;

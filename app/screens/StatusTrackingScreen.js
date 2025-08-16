@@ -52,7 +52,7 @@ function generateJourneyId(childId) {
   return `${childId}-${randomPart}`;
 }
 
-export default function StatusTrackingScreen({ route }) {
+export default function StatusTrackingScreen({ route, navigation }) {
   const { user } = useAuth();
   const [statusIndex, setStatusIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -65,9 +65,9 @@ export default function StatusTrackingScreen({ route }) {
   const [journeyStatuses, setJourneyStatuses] = useState({});
   const [children, setChildren] = useState(route?.params?.children || []);
   const [selectedChild, setSelectedChild] = useState(null);
-  const [showChildSelector, setShowChildSelector] = useState(false);
   const [journeyDetails, setJourneyDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [newJourneyMessage, setNewJourneyMessage] = useState(null);
   const status = STATUS_FLOW[statusIndex];
 
   // Fetch children for the authenticated parent (only if not passed as params)
@@ -192,25 +192,29 @@ export default function StatusTrackingScreen({ route }) {
 
   // Fetch status for all pickup IDs
   const fetchAllStatuses = async () => {
-    if (pickupIds.length === 0 || pickupIds.includes(null) || pickupIds.includes("null")) {
-      return;
-    }
-    
-    const promises = pickupIds.map(id => getPickupStatus(id));
     try {
-      const results = await Promise.all(promises);
-      const newStatuses = {};
-      results.forEach((res, index) => {
-        if (res.ok && res.data) {
-          newStatuses[pickupIds[index]] = {
-            status: res.data.status,
-            timestamp: res.data.timestamp
-          };
+      // Get all journeys from the backend
+      const response = await fetch("https://bdf1812b29eb.ngrok-free.app/get_user_journeys");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.journeys && data.journeys.length > 0) {
+          // Extract pickup IDs from journeys
+          const journeyIds = data.journeys.map(journey => journey.pickup_id);
+          setPickupIds(journeyIds);
+          
+          // Create status mapping
+          const newStatuses = {};
+          data.journeys.forEach(journey => {
+            newStatuses[journey.pickup_id] = {
+              status: journey.status,
+              timestamp: journey.timestamp
+            };
+          });
+          setJourneyStatuses(newStatuses);
         }
-      });
-      setJourneyStatuses(newStatuses);
+      }
     } catch (e) {
-      console.error("Error fetching all statuses:", e);
+      console.error("Error fetching all journeys:", e);
     }
   };
 
@@ -232,6 +236,50 @@ export default function StatusTrackingScreen({ route }) {
       setChildren(route.params.children);
     }
   }, [route?.params?.children]);
+
+  // Handle new journey creation
+  useEffect(() => {
+    if (route?.params?.newJourney) {
+      const newJourney = route.params.newJourney;
+      console.log("🎉 New journey created:", newJourney);
+      
+      // Add the new journey to the pickup IDs list
+      setPickupIds(prev => {
+        if (!prev.includes(newJourney.pickup_id)) {
+          return [...prev, newJourney.pickup_id];
+        }
+        return prev;
+      });
+      
+      // Select the new journey
+      setSelectedPickupId(newJourney.pickup_id);
+      
+      // Show success message
+      setNewJourneyMessage(`✅ New journey created: ${newJourney.pickup_id}`);
+      
+      // Clear the message after 3 seconds
+      setTimeout(() => {
+        setNewJourneyMessage(null);
+      }, 3000);
+      
+      // Clear the route params to avoid re-processing
+      navigation.setParams({ newJourney: undefined });
+    }
+  }, [route?.params?.newJourney, navigation]);
+
+  // Refresh data when screen comes into focus (e.g., after creating a journey)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      // Refresh journey data when returning to this screen
+      fetchAllStatuses();
+      if (selectedPickupId) {
+        fetchStatus(selectedPickupId);
+        fetchJourneyDetails(selectedPickupId);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, selectedPickupId]);
 
   useEffect(() => {
     if (selectedPickupId) {
@@ -294,28 +342,14 @@ export default function StatusTrackingScreen({ route }) {
       return;
     }
     
-    if (children.length === 1) {
-      // If only one child, automatically select it
-      const child = children[0];
-      const newJourneyId = generateJourneyId(child.id);
-      setSelectedChild(child);
-      setPickupIds(prev => [...prev, newJourneyId]);
-      setSelectedPickupId(newJourneyId);
-      Alert.alert("Journey Created", `New journey created for ${child.name} with ID: ${newJourneyId}`);
-    } else {
-      // If multiple children, show child selector
-      setShowChildSelector(true);
-    }
+    // Navigate to journey creation screen with children data
+    navigation.navigate("CreateJourney", { children });
   };
 
-  const handleChildSelection = (child) => {
-    const newJourneyId = generateJourneyId(child.id);
-    setSelectedChild(child);
-    setPickupIds(prev => [...prev, newJourneyId]);
-    setSelectedPickupId(newJourneyId);
-    setShowChildSelector(false);
-    Alert.alert("Journey Created", `New journey created for ${child.name} with ID: ${newJourneyId}`);
-  };
+  // This function is no longer needed as we're using a dedicated journey creation screen
+  // const handleChildSelection = (child) => {
+  //   // Moved to CreateJourney screen
+  // };
 
   const handleSelectPickup = (pickupId) => {
     if (!pickupId || pickupId === null || pickupId === "null") {
@@ -400,6 +434,13 @@ export default function StatusTrackingScreen({ route }) {
           <RefreshControl refreshing={refreshing} onRefresh={fetchStatus} />
         }
       >
+        {/* Success Message */}
+        {newJourneyMessage && (
+          <View style={styles.successMessageContainer}>
+            <AppText style={styles.successMessageText}>{newJourneyMessage}</AppText>
+          </View>
+        )}
+
         {/* Pickup IDs List */}
         <View style={styles.pickupListContainer}>
           <View style={styles.pickupListHeader}>
@@ -507,34 +548,7 @@ export default function StatusTrackingScreen({ route }) {
         </View>
       </ScrollView>
 
-      {/* Child Selector Modal */}
-      {showChildSelector && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <AppText style={styles.modalTitle}>Select Child for Journey</AppText>
-            <ScrollView style={styles.childList}>
-              {children.map((child) => (
-                <TouchableOpacity
-                  key={child.id}
-                  style={styles.childItem}
-                  onPress={() => handleChildSelection(child)}
-                >
-                  <AppText style={styles.childName}>{child.name}</AppText>
-                  <AppText style={styles.childDetails}>
-                    Age: {child.age} • Grade: {child.grade}
-                  </AppText>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <AppButton
-              title="Cancel"
-              onPress={() => setShowChildSelector(false)}
-              color="secondary"
-              style={styles.cancelButton}
-            />
-          </View>
-        </View>
-      )}
+      {/* Child selector modal removed - now using dedicated CreateJourney screen */}
     </Screen>
   );
 }
@@ -788,6 +802,19 @@ const styles = StyleSheet.create({
   noJourneysSubtext: {
     fontSize: 14,
     color: colors.medium,
+    textAlign: 'center',
+  },
+  successMessageContainer: {
+    backgroundColor: colors.Completed,
+    padding: 10,
+    margin: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  successMessageText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
     textAlign: 'center',
   },
 }); 

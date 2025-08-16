@@ -9,14 +9,21 @@ import useAuth from "../auth/useAuth";
 import routes from "../navigation/routes";
 import apiClient from "../api/client";
 
-function InfoCard({ label, value, backgroundColor, iconName }) {
+function InfoCard({ title, items, backgroundColor, iconName }) {
   return (
     <View style={[styles.card, { backgroundColor }]}>
       <View style={styles.cardHeader}>
         <Icon name={iconName} backgroundColor="rgba(255,255,255,0.3)" size={30} />
-        <Text style={styles.cardLabel}>{label}</Text>
+        <Text style={styles.cardTitle}>{title}</Text>
       </View>
-      <Text style={styles.cardValue}>{value || "N/A"}</Text>
+      <View style={styles.cardContent}>
+        {items.map((item, index) => (
+          <View key={index} style={styles.cardItem}>
+            <Text style={styles.cardLabel}>{item.label}</Text>
+            <Text style={styles.cardValue}>{item.value || "N/A"}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -66,6 +73,10 @@ function AccountScreen({ navigation }) {
     navigation.navigate(routes.MESSAGES);
   };
 
+  const handleProfilePress = () => {
+    navigation.navigate(routes.PROFILE);
+  };
+
   if (loading) {
     return (
       <Screen style={styles.screen}>
@@ -106,79 +117,45 @@ function AccountScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* User Info Cards */}
-        <View style={styles.infoContainer}>
-          <InfoCard
-            label="Name"
-            value={userData?.name || firstname}
-            backgroundColor={colors.primary}
-            iconName="account"
-          />
-          <InfoCard
-            label="Email"
-            value={userData?.email || email}
-            backgroundColor={colors.secondary}
-            iconName="email"
-          />
-          <InfoCard
-            label="Phone"
-            value={userData?.phone || "N/A"}
-            backgroundColor={colors.primary}
-            iconName="phone"
-          />
-          <InfoCard
-            label="Role"
-            value={userData?.role || role}
-            backgroundColor={colors.secondary}
-            iconName="account-check"
-          />
-        </View>
+        {/* User Profile Card */}
+        <InfoCard
+          title="Profile Information"
+          items={[
+            { label: "Name", value: userData?.name || firstname },
+            { label: "Email", value: userData?.email || email },
+            { label: "Phone", value: userData?.phone || "N/A" },
+            { label: "Role", value: userData?.role || role }
+          ]}
+          backgroundColor={colors.primary}
+          iconName="account"
+        />
 
-        {/* Parent Information Section */}
+        {/* Parent Information Card */}
         {parentData && (
-          <View style={styles.parentSection}>
-            <Text style={styles.sectionTitle}>Parent Information</Text>
-            <View style={styles.infoContainer}>
-              <InfoCard
-                label="Parent Name"
-                value={parentData.name}
-                backgroundColor="#4CAF50"
-                iconName="account-multiple"
-              />
-              <InfoCard
-                label="Phone"
-                value={parentData.phone}
-                backgroundColor="#2196F3"
-                iconName="phone"
-              />
-              <InfoCard
-                label="Address"
-                value={parentData.address}
-                backgroundColor="#FF9800"
-                iconName="map-marker"
-              />
-              <InfoCard
-                label="Occupation"
-                value={parentData.occupation}
-                backgroundColor="#9C27B0"
-                iconName="briefcase"
-              />
-              <InfoCard
-                label="Relationship"
-                value={parentData.relationship}
-                backgroundColor="#607D8B"
-                iconName="heart"
-              />
-            </View>
-          </View>
+          <InfoCard
+            title="Parent Details"
+            items={[
+              { label: "Name", value: parentData.name },
+              { label: "Phone", value: parentData.phone },
+              { label: "Address", value: parentData.address },
+              { label: "Occupation", value: parentData.occupation },
+              { label: "Relationship", value: parentData.relationship }
+            ]}
+            backgroundColor={colors.secondary}
+            iconName="account-multiple"
+          />
         )}
+
+
 
         {/* Logout */}
         <View style={styles.logoutContainer}>
           <ListItem
             title="Log Out"
+            subTitle="Sign out of your account"
             IconComponent={<Icon name="logout" backgroundColor="#ff5252" />}
             onPress={handleLogout}
+            style={styles.logoutItem}
           />
         </View>
       </ScrollView>
@@ -215,14 +192,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
   },
-  infoContainer: {
-    marginHorizontal: 15,
-    marginTop: 20,
-  },
   card: {
     borderRadius: 12,
     padding: 20,
-    marginBottom: 15,
+    marginHorizontal: 15,
+    marginTop: 20,
     // Shadow for iOS
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
@@ -234,20 +208,37 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 15,
   },
-  cardLabel: {
-    fontSize: 16,
+  cardTitle: {
+    fontSize: 18,
     color: "white",
     fontWeight: "bold",
     marginLeft: 10,
   },
+  cardContent: {
+    gap: 12,
+  },
+  cardItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  cardLabel: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "500",
+  },
   cardValue: {
-    fontSize: 18,
+    fontSize: 14,
     color: "white",
     fontWeight: "600",
+    textAlign: "right",
+    flex: 1,
+    marginLeft: 10,
   },
-  parentSection: {
+  actionsContainer: {
     marginTop: 20,
   },
   sectionTitle: {
@@ -258,9 +249,18 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   logoutContainer: {
-    marginTop: 20,
-    borderTopWidth: 1,
-    borderColor: colors.light,
+    marginTop: 30,
+    marginHorizontal: 15,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  logoutItem: {
+    borderBottomWidth: 0,
   },
   loadingContainer: {
     flex: 1,

@@ -7,11 +7,13 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   RefreshControl,
+  Modal,
 } from "react-native";
 import colors from "../config/colors";
 import Screen from "../components/Screen";
 import { getChildGrades, formatGrade, formatDate } from "../api/children";
 import Icon from "../components/Icon";
+import authStorage from "../auth/storage";
 
 const GradeItem = ({ subject, grade, dateRecorded, remarks }) => {
   // Add safety checks for undefined props
@@ -32,9 +34,74 @@ const GradeItem = ({ subject, grade, dateRecorded, remarks }) => {
   );
 };
 
+const TermFilter = ({ selectedTerm, onTermChange }) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const terms = [
+    { id: 'all', label: 'All Terms' },
+    { id: 'term1', label: 'Term 1' },
+    { id: 'term2', label: 'Term 2' },
+    { id: 'term3', label: 'Term 3' },
+  ];
+
+  const selectedTermLabel = terms.find(term => term.id === selectedTerm)?.label || 'All Terms';
+
+  return (
+    <View style={styles.filterContainer}>
+      <TouchableOpacity
+        style={styles.filterButton}
+        onPress={() => setModalVisible(true)}
+      >
+        <Text style={styles.filterButtonText}>{selectedTermLabel}</Text>
+        <Icon name="chevron-down" backgroundColor="transparent" size={20} />
+      </TouchableOpacity>
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setModalVisible(false)}
+        >
+          <View style={styles.modalContent}>
+            {terms.map((term) => (
+              <TouchableOpacity
+                key={term.id}
+                style={[
+                  styles.termOption,
+                  selectedTerm === term.id && styles.selectedTermOption
+                ]}
+                onPress={() => {
+                  onTermChange(term.id);
+                  setModalVisible(false);
+                }}
+              >
+                <Text style={[
+                  styles.termOptionText,
+                  selectedTerm === term.id && styles.selectedTermOptionText
+                ]}>
+                  {term.label}
+                </Text>
+                {selectedTerm === term.id && (
+                  <Icon name="check" backgroundColor="transparent" size={20} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
+};
+
 function GradesListScreen({ route, navigation }) {
   const { childId, childName } = route.params;
   const [gradeRecords, setGradeRecords] = useState([]);
+  const [filteredGrades, setFilteredGrades] = useState([]);
+  const [selectedTerm, setSelectedTerm] = useState('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -44,21 +111,52 @@ function GradesListScreen({ route, navigation }) {
       setLoading(true);
       setError(null);
       
+      // Debug authentication
+      const authToken = await authStorage.getToken();
+      console.log('Auth token exists:', !!authToken);
+      console.log('Child ID:', childId);
+      
       const response = await getChildGrades(childId);
+      console.log('Grades API response:', response);
       
       if (response.ok) {
         console.log('Grades response:', response.data);
-        setGradeRecords(response.data.grade_records || []);
+        const grades = response.data.grade_records || [];
+        setGradeRecords(grades);
+        filterGrades(grades, selectedTerm);
       } else {
-        setError('Failed to load grade records');
-        console.error('Error loading grades:', response.problem);
+        console.error('Grades API error:', response);
+        if (response.data && response.data.error) {
+          setError(response.data.error);
+        } else {
+          setError('Failed to load grade records');
+        }
       }
     } catch (error) {
+      console.error('Exception in loadGradeRecords:', error);
       setError('Network error occurred');
-      console.error('Error loading grades:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const filterGrades = (grades, term) => {
+    if (term === 'all') {
+      setFilteredGrades(grades);
+    } else {
+      // Filter based on term - you may need to adjust this logic based on your data structure
+      const filtered = grades.filter(grade => {
+        // Assuming there's a term field in the grade data
+        // If not, you might need to add this field to your backend
+        return grade.term === term || grade.term_id === term;
+      });
+      setFilteredGrades(filtered);
+    }
+  };
+
+  const handleTermChange = (term) => {
+    setSelectedTerm(term);
+    filterGrades(gradeRecords, term);
   };
 
   const onRefresh = async () => {
@@ -113,10 +211,13 @@ function GradesListScreen({ route, navigation }) {
         <Text style={styles.childName}>{childName}</Text>
       </View>
 
+      {/* Term Filter */}
+      <TermFilter selectedTerm={selectedTerm} onTermChange={handleTermChange} />
+
       {/* Grade Records */}
-      {gradeRecords.length > 0 ? (
+      {filteredGrades.length > 0 ? (
         <FlatList
-          data={gradeRecords}
+          data={filteredGrades}
           keyExtractor={(item, index) => `grade-${item.id || index}`}
           renderItem={({ item }) => (
             <GradeItem
@@ -134,8 +235,15 @@ function GradesListScreen({ route, navigation }) {
       ) : (
         <View style={styles.emptyContainer}>
           <Icon name="school" backgroundColor={colors.medium} size={60} />
-          <Text style={styles.emptyText}>No grade records found</Text>
-          <Text style={styles.emptySubtext}>Grade records will appear here once they are added</Text>
+          <Text style={styles.emptyText}>
+            {selectedTerm === 'all' ? 'No grade records found' : `No grades for ${selectedTerm.replace('term', 'Term ')}`}
+          </Text>
+          <Text style={styles.emptySubtext}>
+            {selectedTerm === 'all' 
+              ? 'Grade records will appear here once they are added'
+              : 'Try selecting a different term or check back later'
+            }
+          </Text>
         </View>
       )}
     </Screen>
@@ -182,6 +290,58 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.dark,
     marginTop: 10,
+  },
+  filterContainer: {
+    marginHorizontal: 15,
+    marginTop: 15,
+  },
+  filterButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.medium,
+  },
+  filterButtonText: {
+    fontSize: 16,
+    color: colors.dark,
+    fontWeight: "500",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 10,
+    width: "80%",
+    maxWidth: 300,
+  },
+  termOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+  },
+  selectedTermOption: {
+    backgroundColor: colors.primary,
+  },
+  termOptionText: {
+    fontSize: 16,
+    color: colors.dark,
+  },
+  selectedTermOptionText: {
+    color: colors.white,
+    fontWeight: "bold",
   },
   listContainer: {
     paddingHorizontal: 15,

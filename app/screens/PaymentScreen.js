@@ -11,12 +11,15 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
+  Modal,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
+import Constants from "expo-constants";
 import colors from "../config/colors";
 import AppButton from "../components/AppButton";
 import AppText from "../components/AppText";
-import { getPayments } from "../api/payments";
+import { getParentAllPayments, getPaymentDetails } from "../api/payments";
+import PaymentWebView from "../components/PaymentWebView";
 
 const formatFullDate = (date) =>
   date.toLocaleDateString("en-US", {
@@ -59,22 +62,26 @@ const PaymentScreen = () => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showWebView, setShowWebView] = useState(false);
+  const [currentPaymentUrl, setCurrentPaymentUrl] = useState("");
 
-  // Fetch payments from backend
+  // Fetch all payments for parent
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      const response = await getPayments();
-      console.log("Payments response:", response);
+      const response = await getParentAllPayments();
+      console.log("Parent payments response:", response);
       
-      if (response.ok && response.data && response.data.payments) {
-        setPayments(response.data.payments);
+      if (response.ok && response.data && response.data.success) {
+        // Get all payments (pending, completed, failed)
+        const allPayments = response.data.payments || response.data.all_payments || [];
+        setPayments(allPayments);
       } else {
         console.log("No payments found or invalid response");
         setPayments([]);
       }
     } catch (error) {
-      console.error("Error fetching payments:", error);
+      console.error("Error fetching parent payments:", error);
       setPayments([]);
     } finally {
       setLoading(false);
@@ -96,8 +103,8 @@ const PaymentScreen = () => {
   const filteredPayments = payments.filter(
     (p) =>
       searchQuery === "" || 
+      p.child_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.payment_method?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.status?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.amount?.toString().includes(searchQuery) ||
       p.payment_id?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -106,7 +113,7 @@ const PaymentScreen = () => {
   const handlePaymentPress = (payment) => {
     Alert.alert(
       "Payment Details",
-      `Amount: $${payment.amount}\nStatus: ${payment.status}\nMethod: ${payment.payment_method}\nPayment ID: ${payment.payment_id}\nChild ID: ${payment.child_id}`,
+      `Child: ${payment.child_name}\nAmount: ${payment.currency} ${payment.amount}\nStatus: ${payment.status}\nDescription: ${payment.description}\nPayment ID: ${payment.payment_id}`,
       [
         { text: "OK", style: "default" },
         { text: "Pay Now", style: "default", onPress: () => handlePayNow(payment) },
@@ -114,21 +121,42 @@ const PaymentScreen = () => {
     );
   };
 
-  const handlePayNow = (payment) => {
-    Alert.alert(
-      "Payment Processing",
-      `Processing payment of $${payment.amount} for child ${payment.child_id}...`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Confirm", 
-          style: "default", 
-          onPress: () => {
-            Alert.alert("Success", "Payment processed successfully!");
-          }
-        },
-      ]
-    );
+  const handlePayNow = async (payment) => {
+    try {
+      // Generate the payment link directly using the payment_id
+      const paymentUrl = `https://outrankconsult.com/payment/KidMate/pay.php?link=${payment.payment_id}`;
+      
+      Alert.alert(
+        "Payment Confirmation",
+        `You are about to pay ${payment.currency} ${payment.amount} for ${payment.child_name}.\n\nDescription: ${payment.description}`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Proceed to Payment", 
+            style: "default", 
+            onPress: () => openPaymentLink(paymentUrl)
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      Alert.alert("Error", "Unable to process payment. Please try again.");
+    }
+  };
+
+  const openPaymentLink = (paymentLink) => {
+    setCurrentPaymentUrl(paymentLink);
+    setShowWebView(true);
+  };
+
+  const handleWebViewClose = () => {
+    setShowWebView(false);
+    setCurrentPaymentUrl("");
+  };
+
+  const handlePaymentComplete = (status) => {
+    // Refresh the payments list after payment completion
+    fetchPayments();
   };
 
   const renderItem = ({ item }) => {
@@ -148,29 +176,23 @@ const PaymentScreen = () => {
         </View>
 
         <View style={styles.paymentDetails}>
+          <View style={styles.childInfo}>
+            <AppText style={styles.childName}>{item.child_name}</AppText>
+          </View>
+          
           <View style={styles.amountContainer}>
             <AppText style={styles.amountLabel}>Amount:</AppText>
-            <AppText style={styles.amount}>${item.amount}</AppText>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <AppText style={styles.detailLabel}>Payment ID:</AppText>
-            <AppText style={styles.detailValue}>{item.payment_id}</AppText>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <AppText style={styles.detailLabel}>Child ID:</AppText>
-            <AppText style={styles.detailValue}>{item.child_id}</AppText>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <AppText style={styles.detailLabel}>Method:</AppText>
-            <AppText style={styles.detailValue}>{item.payment_method}</AppText>
+            <AppText style={styles.amount}>{item.currency} {item.amount}</AppText>
           </View>
           
           <View style={styles.detailRow}>
             <AppText style={styles.detailLabel}>Description:</AppText>
             <AppText style={styles.detailValue}>{item.description}</AppText>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <AppText style={styles.detailLabel}>Payment ID:</AppText>
+            <AppText style={styles.detailValue}>{item.payment_id}</AppText>
           </View>
         </View>
 
@@ -190,7 +212,7 @@ const PaymentScreen = () => {
 
   return (
     <View style={styles.container}>
-      <AppText style={styles.title}>💳 Payment History</AppText>
+      <AppText style={styles.title}>💳 All Payments</AppText>
 
       <View style={styles.searchContainer}>
         <TextInput
@@ -205,7 +227,7 @@ const PaymentScreen = () => {
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <AppText style={styles.loadingText}>Loading payments...</AppText>
+          <AppText style={styles.loadingText}>Loading all payments...</AppText>
         </View>
       ) : (
         <FlatList
@@ -213,7 +235,7 @@ const PaymentScreen = () => {
           keyExtractor={(item) => item.payment_id}
           ListEmptyComponent={
             <AppText style={styles.emptyText}>
-              No payments found for selected criteria.
+              No payments found.
             </AppText>
           }
           renderItem={renderItem}
@@ -228,6 +250,19 @@ const PaymentScreen = () => {
           contentContainerStyle={{ paddingBottom: 20 }}
         />
       )}
+
+      {/* Payment WebView Modal */}
+      <Modal
+        visible={showWebView}
+        animationType="slide"
+        presentationStyle="fullScreen"
+      >
+        <PaymentWebView
+          paymentUrl={currentPaymentUrl}
+          onClose={handleWebViewClose}
+          onPaymentComplete={handlePaymentComplete}
+        />
+      </Modal>
     </View>
   );
 };
@@ -235,7 +270,6 @@ const PaymentScreen = () => {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    padding: 20, 
     backgroundColor: colors.white 
   },
   title: { 
@@ -243,9 +277,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold", 
     marginBottom: 15,
     color: colors.dark,
+    paddingTop: Constants.statusBarHeight + 10,
+    paddingHorizontal: 20,
   },
   searchContainer: {
     marginBottom: 15,
+    paddingHorizontal: 20,
   },
   searchInput: {
     backgroundColor: colors.light,
@@ -291,6 +328,14 @@ const styles = StyleSheet.create({
   },
   paymentDetails: {
     marginBottom: 10,
+  },
+  childInfo: {
+    marginBottom: 8,
+  },
+  childName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: colors.primary,
   },
   amountContainer: {
     flexDirection: "row",
@@ -340,6 +385,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 50,
+    paddingHorizontal: 20,
   },
   loadingText: {
     marginTop: 10,

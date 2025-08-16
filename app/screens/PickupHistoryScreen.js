@@ -5,6 +5,7 @@ import AppText from "../components/AppText";
 import colors from "../config/colors";
 import { getPickupStatus, getAllPickupJourneys, getUserPickupJourneys } from "../api/status";
 import useAuth from "../auth/useAuth";
+import apiClient from "../api/client";
 
 const STATUS_LABELS = {
   pending: "Waiting to Start",

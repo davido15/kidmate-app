@@ -48,7 +48,7 @@ export default function GooglePlacesSimpleTest() {
 
     setLoading(true);
     try {
-      const API_KEY = 'AIzaSyDI3BeN_0gsceNXmsWV2aWytqUIr5xbKBQ';
+      const API_KEY = process.env.GOOGLE_PLACES_API_KEY || 'YOUR_API_KEY_HERE';
       const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(searchText)}&inputtype=textquery&fields=formatted_address,name,geometry&key=${API_KEY}`;
       
       console.log('Testing API with URL:', url);

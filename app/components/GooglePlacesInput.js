@@ -24,7 +24,7 @@ const GooglePlacesInput = ({
 
     setLoading(true);
     try {
-      const API_KEY = 'AIzaSyDI3BeN_0gsceNXmsWV2aWytqUIr5xbKBQ';
+      const API_KEY = process.env.GOOGLE_PLACES_API_KEY || 'YOUR_API_KEY_HERE';
       const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(text)}&inputtype=textquery&fields=formatted_address,name,geometry&key=${API_KEY}`;
       
       const response = await fetch(url);

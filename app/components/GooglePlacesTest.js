@@ -44,7 +44,7 @@ export default function GooglePlacesTest() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Google Places API Test</Text>
-        <Text style={styles.subtitle}>API Key: {`${'AIzaSyDI3BeN_0gsceNXmsWV2aWytqUIr5xbKBQ'.substring(0, 10)}...`}</Text>
+        <Text style={styles.subtitle}>API Key: {`${(process.env.GOOGLE_PLACES_API_KEY || 'YOUR_API_KEY_HERE').substring(0, 10)}...`}</Text>
       </View>
 
       <GooglePlacesAutocomplete
@@ -58,7 +58,7 @@ export default function GooglePlacesTest() {
         fetchDetails={true}
         enablePoweredByContainer={false}
         query={{
-          key: 'AIzaSyDI3BeN_0gsceNXmsWV2aWytqUIr5xbKBQ',
+                          key: process.env.GOOGLE_PLACES_API_KEY || 'YOUR_API_KEY_HERE',
           language: 'en',
           types: 'establishment|geocode',
           components: 'country:us' // Optional: restrict to US

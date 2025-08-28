@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import AppText from './AppText';
 import colors from '../config/colors';
+import bugsnagLog from '../utility/bugsnag';
 
 const PaymentWebView = ({ paymentUrl, onClose, onPaymentComplete }) => {
   const [loading, setLoading] = useState(true);
@@ -31,7 +32,7 @@ const PaymentWebView = ({ paymentUrl, onClose, onPaymentComplete }) => {
     
     // Check if we're on a success or error page
     const currentUrl = navState.url;
-    console.log('WebView URL changed:', currentUrl);
+    bugsnagLog.log('WebView URL changed', { url: currentUrl });
     
     if (currentUrl.includes('paycallback.php') && currentUrl.includes('success')) {
       Alert.alert(
@@ -83,7 +84,11 @@ const PaymentWebView = ({ paymentUrl, onClose, onPaymentComplete }) => {
 
   const handleError = (syntheticEvent) => {
     const { nativeEvent } = syntheticEvent;
-    console.warn('WebView error: ', nativeEvent);
+    bugsnagLog.error(new Error('WebView error'), { 
+      nativeEvent,
+      paymentUrl,
+      operation: 'payment_webview'
+    });
     Alert.alert(
       'Error',
       'Failed to load payment page. Please check your internet connection.',

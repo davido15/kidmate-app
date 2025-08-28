@@ -1,22 +1,26 @@
 import React, { useState } from 'react';
 import { SafeAreaView, StyleSheet, View, Text, Alert } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import bugsnagLog from '../utility/bugsnag';
 
 export default function GooglePlacesTest() {
   const [searchText, setSearchText] = useState('');
   const [lastResult, setLastResult] = useState(null);
 
   const handlePress = (data, details = null) => {
-    console.log('=== GOOGLE PLACES TEST ===');
-    console.log('Raw data:', data);
-    console.log('Details:', details);
+    bugsnagLog.log('Google Places test - place selected', { 
+      hasDetails: !!details,
+      placeId: data?.place_id 
+    });
     
     if (details) {
       const { name, formatted_address, geometry } = details;
-      console.log("Place Name:", name);
-      console.log("Address:", formatted_address);
-      console.log("Latitude:", geometry.location.lat);
-      console.log("Longitude:", geometry.location.lng);
+      bugsnagLog.log("Place details", {
+        name,
+        address: formatted_address,
+        latitude: geometry.location.lat,
+        longitude: geometry.location.lng
+      });
       
       setLastResult({
         name,
@@ -30,13 +34,13 @@ export default function GooglePlacesTest() {
         `Name: ${name}\nAddress: ${formatted_address}\nLat: ${geometry.location.lat}\nLng: ${geometry.location.lng}`
       );
     } else {
-      console.log('No details available');
+      bugsnagLog.warn('No details available for selected place');
       Alert.alert('No Details', 'Location selected but no details available');
     }
   };
 
   const handleError = (error) => {
-    console.error('Google Places Error:', error);
+    bugsnagLog.error(error, { operation: 'google_places_search' });
     Alert.alert('Error', `Google Places error: ${error.message || 'Unknown error'}`);
   };
 
@@ -52,7 +56,7 @@ export default function GooglePlacesTest() {
         onPress={handlePress}
         onFail={handleError}
         onNotFound={() => {
-          console.log('No results found');
+          bugsnagLog.warn('No Google Places results found', { searchText });
           Alert.alert('No Results', 'No places found for your search');
         }}
         fetchDetails={true}

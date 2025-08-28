@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import * as Location from "expo-location";
+import bugsnagLog from "../utility/bugsnag";
 
 export default useLocation = () => {
   const [location, setLocation] = useState();
@@ -13,7 +14,7 @@ export default useLocation = () => {
       } = await Location.getCurrentPositionAsync();
       setLocation({ latitude, longitude });
     } catch (error) {
-      console.log(error);
+      bugsnagLog.locationError("get_current_position", error);
     }
   };
 

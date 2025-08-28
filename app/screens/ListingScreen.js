@@ -10,6 +10,7 @@ import AppButton from "../components/AppButton";
 import AppText from "../components/AppText";
 
 import listingsApi from "../api/listings";
+import bugsnagLog from "../utility/bugsnag";
 
 /*
 const listings = [
@@ -47,8 +48,8 @@ function ListingScreen({ navigation }) {
     if (!response.ok) return setError(true);
 
     setError(false);
-   console.log( setListings(response.data));
-   console.log(listings[0])
+   bugsnagLog.log("Listings loaded successfully", { count: response.data?.length || 0 });
+   bugsnagLog.log("First listing", { listingId: response.data?.[0]?.id });
   };
 
   return (

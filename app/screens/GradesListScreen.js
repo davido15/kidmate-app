@@ -14,6 +14,7 @@ import Screen from "../components/Screen";
 import { getChildGrades, formatGrade, formatDate } from "../api/children";
 import Icon from "../components/Icon";
 import authStorage from "../auth/storage";
+import bugsnagLog from "../utility/bugsnag";
 
 const GradeItem = ({ subject, grade, dateRecorded, remarks }) => {
   // Add safety checks for undefined props
@@ -113,19 +114,18 @@ function GradesListScreen({ route, navigation }) {
       
       // Debug authentication
       const authToken = await authStorage.getToken();
-      console.log('Auth token exists:', !!authToken);
-      console.log('Child ID:', childId);
+      bugsnagLog.log('Auth token exists', { hasToken: !!authToken, childId });
       
       const response = await getChildGrades(childId);
-      console.log('Grades API response:', response);
+      bugsnagLog.log('Grades API response', { success: response.ok });
       
       if (response.ok) {
-        console.log('Grades response:', response.data);
+        bugsnagLog.log('Grades loaded successfully', { count: response.data?.grade_records?.length || 0 });
         const grades = response.data.grade_records || [];
         setGradeRecords(grades);
         filterGrades(grades, selectedTerm);
       } else {
-        console.error('Grades API error:', response);
+        bugsnagLog.apiError('/grades', response, { childId });
         if (response.data && response.data.error) {
           setError(response.data.error);
         } else {
@@ -133,7 +133,7 @@ function GradesListScreen({ route, navigation }) {
         }
       }
     } catch (error) {
-      console.error('Exception in loadGradeRecords:', error);
+      bugsnagLog.error(error, { operation: 'loadGradeRecords', childId });
       setError('Network error occurred');
     } finally {
       setLoading(false);

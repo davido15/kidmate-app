@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import colors from "../config/colors";
 import { getComplaints } from "../api/complaints";
+import apiClient from "../api/client";
+import bugsnagLog from "../utility/bugsnag";
 
 function ComplaintsListScreen({ navigation }) {
   const [complaints, setComplaints] = useState([]);
@@ -23,12 +25,12 @@ function ComplaintsListScreen({ navigation }) {
       try {
         const authStorage = require("../auth/storage");
         const token = await authStorage.getToken();
-        console.log("🔐 Auth token exists:", !!token);
+        bugsnagLog.log("Auth token exists", { hasToken: !!token });
         if (token) {
-          console.log("🔐 Token preview:", token.substring(0, 20) + "...");
+          bugsnagLog.log("Token preview", { tokenPreview: token.substring(0, 20) + "..." });
         }
       } catch (err) {
-        console.log("🔐 Auth check error:", err);
+        bugsnagLog.error(err, { operation: "check_auth" });
       }
     };
     checkAuth();
@@ -37,28 +39,28 @@ function ComplaintsListScreen({ navigation }) {
   const fetchComplaints = async () => {
     try {
       setError(null);
-      console.log("🔍 Fetching complaints...");
+      bugsnagLog.log("Fetching complaints");
       
       // Test the API endpoint first
-              const testResponse = await fetch("https://8c22148c8bbe.ngrok-free.app/api/test");
-      console.log("🧪 Test endpoint response:", testResponse.status);
+      const testResponse = await apiClient.get("/api/test");
+      bugsnagLog.log("Test endpoint response", { success: testResponse.ok });
       
       const response = await getComplaints();
-      console.log("📦 Complaints API response:", response);
+      bugsnagLog.log("Complaints API response", { success: response.ok });
       
       if (response.ok && response.data && response.data.success) {
-        console.log("✅ Complaints fetched successfully:", response.data.complaints);
+        bugsnagLog.log("Complaints fetched successfully", { count: response.data.complaints?.length || 0 });
         setComplaints(response.data.complaints || []);
       } else if (response.ok && response.data) {
         // Handle case where response is successful but no success flag
-        console.log("✅ Complaints fetched successfully:", response.data);
+        bugsnagLog.log("Complaints fetched successfully", { count: (response.data.complaints || response.data)?.length || 0 });
         setComplaints(response.data.complaints || response.data || []);
       } else {
-        console.log("❌ Complaints fetch failed:", response);
+        bugsnagLog.apiError("/complaints", response);
         setError(response.data?.error || response.error || "Failed to fetch complaints");
       }
     } catch (err) {
-      console.error("💥 Error fetching complaints:", err);
+      bugsnagLog.error(err, { operation: "fetch_complaints" });
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);

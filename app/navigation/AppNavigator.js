@@ -9,7 +9,6 @@ import PickupNavigator from "./PickupNavigator";
 import TrackNavigator from "./TrackNavigator";
 
 import PaymentScreen from "../screens/PaymentScreen";
-import TestGooglePlacesScreen from "../screens/TestGooglePlacesScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -91,15 +90,7 @@ const AppNavigator = () => (
         ),
       }}
     />
-    <Tab.Screen
-      name="Test Places"
-      component={TestGooglePlacesScreen}
-      options={{
-        tabBarIcon: ({ color, size }) => (
-          <MaterialCommunityIcons name="map-marker" color={color} size={size} />
-        ),
-      }}
-    />
+
     <Tab.Screen
       name="History"
       component={HistoryNavigator}

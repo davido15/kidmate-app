@@ -20,6 +20,7 @@ import AppButton from "../components/AppButton";
 import AppText from "../components/AppText";
 import { getParentAllPayments, getPaymentDetails } from "../api/payments";
 import PaymentWebView from "../components/PaymentWebView";
+import bugsnagLog from "../utility/bugsnag";
 
 const formatFullDate = (date) =>
   date.toLocaleDateString("en-US", {
@@ -70,18 +71,18 @@ const PaymentScreen = () => {
     try {
       setLoading(true);
       const response = await getParentAllPayments();
-      console.log("Parent payments response:", response);
+      bugsnagLog.log("Parent payments response", { success: response.ok });
       
       if (response.ok && response.data && response.data.success) {
         // Get all payments (pending, completed, failed)
         const allPayments = response.data.payments || response.data.all_payments || [];
         setPayments(allPayments);
       } else {
-        console.log("No payments found or invalid response");
+        bugsnagLog.warn("No payments found or invalid response", { response });
         setPayments([]);
       }
     } catch (error) {
-      console.error("Error fetching parent payments:", error);
+      bugsnagLog.paymentError("fetch_parent_payments", error);
       setPayments([]);
     } finally {
       setLoading(false);
@@ -139,7 +140,7 @@ const PaymentScreen = () => {
         ]
       );
     } catch (error) {
-      console.error("Error processing payment:", error);
+      bugsnagLog.paymentError("process_payment", error, { paymentId: payment.payment_id });
       Alert.alert("Error", "Unable to process payment. Please try again.");
     }
   };

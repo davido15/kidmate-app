@@ -14,6 +14,7 @@ import AppForm from "../components/AppForm";
 
 
 import auth from "../api/auth";
+import bugsnagLog from "../utility/bugsnag";
 
 function LoginScreen(props) {
   const useauth = useAuth();
@@ -21,14 +22,17 @@ function LoginScreen(props) {
   const [loginFailed, setLoginFailed] = useState(false);
 
   const handleSubmit = async ({ email, password }) => {
-    console.log(email,password)
+    bugsnagLog.log("Login attempt", { email: email.substring(0, 3) + "***" });
     const result = await auth.login(email, password);
-    console.log(result)
-    if(!result.ok) return setLoginFailed(true);
+    bugsnagLog.log("Login response", { success: result.ok });
+    if(!result.ok) {
+      bugsnagLog.authError("login_failed", result);
+      return setLoginFailed(true);
+    }
     setLoginFailed(false)
    const user= result.data.token;
 
-   console.log("the user is here ",user);
+   bugsnagLog.log("User logged in successfully", { userId: user ? "present" : "missing" });
     useauth.logIn(user);
   };
 

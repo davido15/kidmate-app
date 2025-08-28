@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,18 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Share,
 } from 'react-native';
+import { captureRef } from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
+import QRCode from "react-native-qrcode-svg";
 import Screen from '../components/Screen';
 import AppText from '../components/AppText';
 import colors from '../config/colors';
 import GooglePlacesInput from '../components/GooglePlacesInput';
 import { getPickupPersons } from '../api/pickup';
 import authStorage from '../auth/storage';
+import apiClient from '../api/client';
 
 export default function CreateJourneyScreen({ route, navigation }) {
   const { children } = route.params || {};
@@ -38,6 +43,11 @@ export default function CreateJourneyScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [pickupPersons, setPickupPersons] = useState([]);
   const [loadingPickupPersons, setLoadingPickupPersons] = useState(false);
+  
+  // State for QR code
+  const [qrUrl, setQrUrl] = useState(null);
+  const [createdJourney, setCreatedJourney] = useState(null);
+  const qrRef = useRef();
 
   // Fetch pickup persons on component mount
   useEffect(() => {
@@ -121,38 +131,38 @@ export default function CreateJourneyScreen({ route, navigation }) {
         dropoff_longitude: dropoffLongitude
       };
 
-      console.log("📤 Creating journey with data:", journeyData);
+      console.log("📱 MOBILE APP - Create Journey Request:");
+      console.log("📤 Selected Child:", selectedChild);
+      console.log("📤 Selected Pickup Person:", selectedPickupPerson);
+      console.log("📤 Dropoff Location:", dropoffLocation);
+      console.log("📤 Dropoff Coordinates:", `${dropoffLatitude}, ${dropoffLongitude}`);
+      console.log("📤 Full journey data:", JSON.stringify(journeyData, null, 2));
 
-      const response = await fetch("https://bdf1812b29eb.ngrok-free.app/api/create-journey", {
-        method: "POST",
-        headers,
-        body: JSON.stringify(journeyData),
-      });
+      const response = await apiClient.post("/api/create-journey", journeyData);
+
+      console.log("📱 MOBILE APP - Create Journey Response:");
+      console.log("📥 Response OK:", response.ok);
+      console.log("📥 Response Data:", response.data);
+      console.log("📥 Response Error:", response.error);
 
       if (response.ok) {
-        const data = await response.json();
-        Alert.alert(
-          "Journey Created Successfully!", 
-          `Journey created for ${selectedChild.name} with pickup person ${selectedPickupPerson.name}.\n\nPickup ID: ${data.pickup_id}`,
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                // Pass the new journey data back to the track screen
-                navigation.navigate("StatusTracking", { 
-                  newJourney: {
-                    pickup_id: data.pickup_id,
-                    child_name: selectedChild.name,
-                    pickup_person_name: selectedPickupPerson.name
-                  }
-                });
-              }
-            }
-          ]
-        );
+        const data = response.data;
+        
+        // Generate QR code URL for journey verification
+        // Use the PHP web URL for verification (not the API URL)
+        const baseUrl = "http://localhost:8888/KidMate";
+        const verificationUrl = `${baseUrl}/verify.php?pickup_id=${data.pickup_id}`;
+        
+        setQrUrl(verificationUrl);
+        setCreatedJourney({
+          pickup_id: data.pickup_id,
+          child_name: selectedChild.name,
+          pickup_person_name: selectedPickupPerson.name
+        });
+        
+        console.log("🎯 QR Code URL generated:", verificationUrl);
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(response.error || "Failed to create journey");
       }
     } catch (error) {
       console.log("Create journey error:", error);
@@ -172,6 +182,45 @@ export default function CreateJourneyScreen({ route, navigation }) {
     setShowPickupPersonSelector(false);
   };
 
+  const handleShare = async () => {
+    try {
+      if (!qrRef.current) return;
+
+      const uri = await captureRef(qrRef, {
+        format: "png",
+        quality: 1,
+      });
+
+      if (Platform.OS === "ios" || Platform.OS === "android") {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri);
+        } else {
+          alert("Sharing not supported on this platform");
+        }
+      } else {
+        await Share.share({
+          url: uri,
+          message: "Journey Verification QR Code",
+        });
+      }
+    } catch (error) {
+      console.log("Error sharing QR:", error);
+      alert("Error sharing QR code");
+    }
+  };
+
+  const handleReset = () => {
+    setQrUrl(null);
+    setCreatedJourney(null);
+    setSelectedChild(null);
+    setSelectedPickupPerson(null);
+    setDropoffLocation("");
+    setDropoffLocationName("");
+    setDropoffLocationAddress("");
+    setDropoffLatitude(null);
+    setDropoffLongitude(null);
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -187,89 +236,133 @@ export default function CreateJourneyScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        style={styles.scrollView} 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollViewContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text style={styles.title}>Create New Pickup Journey</Text>
-        
-        <View style={styles.form}>
-          {/* Child Selection */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>👶 Select Child</Text>
+      {!qrUrl ? (
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollViewContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.title}>Create New Pickup Journey</Text>
+          
+          <View style={styles.form}>
+            {/* Child Selection */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>👶 Select Child</Text>
+              <TouchableOpacity
+                style={styles.dropdownButton}
+                onPress={() => setShowChildSelector(true)}
+              >
+                <Text style={styles.dropdownButtonText}>
+                  {selectedChild ? `${selectedChild.name} (ID: ${selectedChild.id})` : "Select Child"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Pickup Person Selection */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>👤 Select Pickup Person</Text>
+              <TouchableOpacity
+                style={styles.dropdownButton}
+                onPress={() => setShowPickupPersonSelector(true)}
+                disabled={loadingPickupPersons}
+              >
+                <Text style={styles.dropdownButtonText}>
+                  {loadingPickupPersons ? "Loading..." : 
+                   selectedPickupPerson ? `${selectedPickupPerson.name} (${selectedPickupPerson.kid_name})` : 
+                   "Select Pickup Person"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Drop-off Location Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>📍 Drop-off Location</Text>
+              <Text style={styles.sectionSubtitle}>Search and select where the child should be dropped off</Text>
+              <GooglePlacesInput
+                placeholder="Search for drop-off location (e.g., school, home, restaurant)..."
+                onLocationSelect={handleDropoffLocationSelect}
+                containerStyle={styles.googlePlacesContainer}
+                textInputStyle={styles.googlePlacesInput}
+              />
+              {dropoffLocation && (
+                <View style={styles.selectedLocation}>
+                  <Text style={styles.selectedLocationText}>
+                    ✅ Selected Location
+                  </Text>
+                  {dropoffLocationName && (
+                    <Text style={styles.locationNameText}>
+                      🏢 {dropoffLocationName}
+                    </Text>
+                  )}
+                  <Text style={styles.locationAddressText}>
+                    📍 {dropoffLocationAddress}
+                  </Text>
+                  {dropoffLatitude && dropoffLongitude && (
+                    <Text style={styles.coordinatesText}>
+                      📊 Coordinates: {dropoffLatitude.toFixed(6)}, {dropoffLongitude.toFixed(6)}
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {/* Create Journey Button */}
             <TouchableOpacity
-              style={styles.dropdownButton}
-              onPress={() => setShowChildSelector(true)}
+              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+              onPress={handleCreateJourney}
+              disabled={loading}
+              activeOpacity={0.8}
             >
-              <Text style={styles.dropdownButtonText}>
-                {selectedChild ? `${selectedChild.name} (ID: ${selectedChild.id})` : "Select Child"}
+              <Text style={styles.submitText}>
+                {loading ? "Creating Journey..." : "Create Journey"}
               </Text>
             </TouchableOpacity>
           </View>
-
-          {/* Pickup Person Selection */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>👤 Select Pickup Person</Text>
-            <TouchableOpacity
-              style={styles.dropdownButton}
-              onPress={() => setShowPickupPersonSelector(true)}
-              disabled={loadingPickupPersons}
-            >
-              <Text style={styles.dropdownButtonText}>
-                {loadingPickupPersons ? "Loading..." : 
-                 selectedPickupPerson ? `${selectedPickupPerson.name} (${selectedPickupPerson.kid_name})` : 
-                 "Select Pickup Person"}
-              </Text>
-            </TouchableOpacity>
+        </ScrollView>
+      ) : (
+        <View style={styles.qrSection}>
+          <Text style={styles.subtitle}>🎯 Journey Verification QR Code</Text>
+          <Text style={styles.qrDescription}>
+            Scan this QR code to verify the journey details and access admin verification.
+          </Text>
+          
+          <View ref={qrRef} collapsable={false} style={styles.qrContainer}>
+            <QRCode value={qrUrl} size={250} />
           </View>
+          
+          <Text style={styles.qrText}>{qrUrl}</Text>
+          
+          {createdJourney && (
+            <View style={styles.journeyInfo}>
+              <Text style={styles.journeyInfoTitle}>Journey Details:</Text>
+              <Text style={styles.journeyInfoText}>Child: {createdJourney.child_name}</Text>
+              <Text style={styles.journeyInfoText}>Pickup Person: {createdJourney.pickup_person_name}</Text>
+              <Text style={styles.journeyInfoText}>Pickup ID: {createdJourney.pickup_id}</Text>
+            </View>
+          )}
 
-          {/* Drop-off Location Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📍 Drop-off Location</Text>
-            <Text style={styles.sectionSubtitle}>Search and select where the child should be dropped off</Text>
-            <GooglePlacesInput
-              placeholder="Search for drop-off location (e.g., school, home, restaurant)..."
-              onLocationSelect={handleDropoffLocationSelect}
-              containerStyle={styles.googlePlacesContainer}
-              textInputStyle={styles.googlePlacesInput}
-            />
-            {dropoffLocation && (
-              <View style={styles.selectedLocation}>
-                <Text style={styles.selectedLocationText}>
-                  ✅ Selected Location
-                </Text>
-                {dropoffLocationName && (
-                  <Text style={styles.locationNameText}>
-                    🏢 {dropoffLocationName}
-                  </Text>
-                )}
-                <Text style={styles.locationAddressText}>
-                  📍 {dropoffLocationAddress}
-                </Text>
-                {dropoffLatitude && dropoffLongitude && (
-                  <Text style={styles.coordinatesText}>
-                    📊 Coordinates: {dropoffLatitude.toFixed(6)}, {dropoffLongitude.toFixed(6)}
-                  </Text>
-                )}
-              </View>
-            )}
-          </View>
+          <TouchableOpacity style={styles.button} onPress={handleReset}>
+            <Text style={styles.buttonText}>Create New Journey</Text>
+          </TouchableOpacity>
 
-          {/* Create Journey Button */}
           <TouchableOpacity
-            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-            onPress={handleCreateJourney}
-            disabled={loading}
-            activeOpacity={0.8}
+            style={[styles.button, styles.share]}
+            onPress={handleShare}
           >
-            <Text style={styles.submitText}>
-              {loading ? "Creating Journey..." : "Create Journey"}
-            </Text>
+            <Text style={styles.buttonText}>Share QR Code</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.button, styles.track]}
+            onPress={() => navigation.navigate("StatusTracking", { 
+              newJourney: createdJourney
+            })}
+          >
+            <Text style={styles.buttonText}>Track Journey</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      )}
 
       {/* Child Selector Modal */}
       {showChildSelector && (
@@ -531,5 +624,82 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: colors.white,
     fontWeight: '600',
+  },
+  // QR Code styles
+  qrSection: {
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  subtitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  qrDescription: {
+    fontSize: 14,
+    color: colors.medium,
+    textAlign: "center",
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  qrContainer: {
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    marginBottom: 15,
+  },
+  qrText: {
+    fontSize: 12,
+    color: "#666",
+    marginVertical: 10,
+    textAlign: "center",
+    paddingHorizontal: 20,
+  },
+  journeyInfo: {
+    backgroundColor: colors.light,
+    padding: 15,
+    borderRadius: 10,
+    marginVertical: 15,
+    width: "100%",
+  },
+  journeyInfoTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: colors.dark,
+    marginBottom: 8,
+  },
+  journeyInfoText: {
+    fontSize: 14,
+    color: colors.medium,
+    marginBottom: 3,
+  },
+  button: {
+    backgroundColor: colors.secondary,
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    marginTop: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    width: "100%",
+  },
+  buttonText: {
+    color: colors.white,
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  share: {
+    backgroundColor: "#00b894",
+  },
+  track: {
+    backgroundColor: colors.primary,
   },
 }); 

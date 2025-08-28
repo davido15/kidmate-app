@@ -2,7 +2,7 @@ import cache from "../utility/cache";
 import authStorage from "../auth/storage";
 
 // Add baseURL for all requests
-const baseURL = "https://bdf1812b29eb.ngrok-free.app";
+const baseURL = "https://8e05f2e522d9.ngrok-free.app";
 
 // Create a simple function for making GET requests
 const get = async (url, params, config = {}) => {
@@ -56,16 +56,31 @@ const post = async (url, body, config = {}) => {
   try {
     const authToken = await authStorage.getToken();
     const headers = {
-      "Content-Type": "application/json",
       ...config.headers,
     };
+    
+    // Only set Content-Type if not multipart/form-data
+    if (!headers["Content-Type"] && !(body instanceof FormData)) {
+      headers["Content-Type"] = "application/json";
+    }
+    
     if (authToken) {
       headers["Authorization"] = `Bearer ${authToken}`;
     }
+    
+    // Handle different body types
+    let requestBody = body;
+    if (body instanceof FormData) {
+      // Don't stringify FormData
+      requestBody = body;
+    } else if (headers["Content-Type"] === "application/json") {
+      requestBody = JSON.stringify(body);
+    }
+    
     const response = await fetch(`${baseURL}${url}`, {
       method: "POST",
       headers,
-      body: JSON.stringify(body),
+      body: requestBody,
       ...config,
     });
     const data = await response.json();

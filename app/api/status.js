@@ -50,4 +50,15 @@ export const getUserPickupJourneys = async () => {
     console.error("Error getting user pickup journeys:", error);
     return { ok: false, error: "Failed to get user pickup journeys" };
   }
+};
+
+// Record departure for a journey
+export const recordDeparture = async (pickupId) => {
+  try {
+    const response = await apiClient.post("/api/record-departure", { pickup_id: pickupId });
+    return response;
+  } catch (error) {
+    console.error("Error recording departure:", error);
+    return { ok: false, error: "Failed to record departure" };
+  }
 }; 

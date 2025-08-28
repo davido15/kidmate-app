@@ -6,18 +6,21 @@ import colors from "../config/colors";
 import { getPickupStatus, getAllPickupJourneys, getUserPickupJourneys } from "../api/status";
 import useAuth from "../auth/useAuth";
 import apiClient from "../api/client";
+import bugsnagLog from "../utility/bugsnag";
 
 const STATUS_LABELS = {
-  pending: "Waiting to Start",
+  pending: "Started",
+  departed: "Departed",
   picked: "Picked Up",
-  dropoff: "In Transit",
-  completed: "Arrived",
+  arrived: "Arrived",
+  completed: "Completed",
 };
 
 const STATUS_COLORS = {
   pending: colors.grey,
+  departed: colors.warning,
   picked: colors.secondary,
-  dropoff: colors.Inprogress,
+  arrived: colors.Inprogress,
   completed: colors.Completed,
 };
 
@@ -39,14 +42,14 @@ export default function PickupHistoryScreen({ navigation }) {
   const fetchPickupJourneys = async () => {
     setLoading(true);
     try {
-      console.log("Fetching pickup journeys for user:", user?.sub?.name, "(ID:", user?.sub?.id, ")");
+      bugsnagLog.log("Fetching pickup journeys for user", { userName: user?.sub?.name, userId: user?.sub?.id });
       // Use user-specific endpoint if user is logged in, otherwise use general endpoint
       const res = user && user.sub ? await getUserPickupJourneys() : await getAllPickupJourneys();
-      console.log("Response:", res);
+      bugsnagLog.log("Pickup journeys response", { success: res.ok });
       
       if (res.ok && res.data && res.data.journeys) {
         const journeys = res.data.journeys;
-        console.log("Journeys found:", journeys.length);
+        bugsnagLog.log("Journeys found", { count: journeys.length });
         const ids = journeys.map(journey => journey.pickup_id);
         const statuses = {};
         
@@ -62,13 +65,13 @@ export default function PickupHistoryScreen({ navigation }) {
         setPickupIds(ids);
         setJourneyStatuses(statuses);
       } else {
-        console.log("No journeys found or invalid response");
+        bugsnagLog.warn("No journeys found or invalid response", { response: res });
         // If no journeys found, set empty arrays
         setPickupIds([]);
         setJourneyStatuses({});
       }
     } catch (e) {
-      console.error("Error fetching pickup journeys:", e);
+      bugsnagLog.error(e, { operation: "fetch_pickup_journeys", userId: user?.sub?.id });
       setPickupIds([]);
       setJourneyStatuses({});
     } finally {
@@ -83,7 +86,7 @@ export default function PickupHistoryScreen({ navigation }) {
         setParentData(response.data.parent);
       }
     } catch (error) {
-      console.error('Error fetching parent data:', error);
+      bugsnagLog.error(error, { operation: "fetch_parent_data" });
     }
   };
 

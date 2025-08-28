@@ -1,10 +1,11 @@
 import client from "./client";
+import bugsnagLog from "../utility/bugsnag";
 
 const endpoint = "/listings";
 
 const getListings = () => client.get();
 
-console.log(getListings)
+bugsnagLog.log("Listings API function loaded");
 
 
 

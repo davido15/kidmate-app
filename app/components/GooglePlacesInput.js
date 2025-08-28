@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, TextInput, View, Text, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import colors from '../config/colors';
+import bugsnagLog from '../utility/bugsnag';
 
 const GooglePlacesInput = ({ 
   placeholder = 'Search location...', 
@@ -24,7 +25,7 @@ const GooglePlacesInput = ({
 
     setLoading(true);
     try {
-      const API_KEY = process.env.GOOGLE_PLACES_API_KEY || 'YOUR_API_KEY_HERE';
+      const API_KEY = process.env.GOOGLE_PLACES_API_KEY || 'AIzaSyDI3BeN_0gsceNXmsWV2aWytqUIr5xbKBQ';
       const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(text)}&inputtype=textquery&fields=formatted_address,name,geometry&key=${API_KEY}`;
       
       const response = await fetch(url);
@@ -87,8 +88,10 @@ const GooglePlacesInput = ({
         }
       }
     } catch (error) {
-      console.error('Error extracting coordinates:', error);
-      console.log('Item structure:', item);
+      bugsnagLog.error(error, { 
+        operation: 'extract_coordinates',
+        item: item
+      });
     }
     
     if (onLocationSelect) {

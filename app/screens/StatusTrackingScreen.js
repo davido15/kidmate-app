@@ -4,21 +4,24 @@ import Screen from "../components/Screen";
 import AppButton from "../components/AppButton";
 import AppText from "../components/AppText";
 import colors from "../config/colors";
-import { updatePickupStatus, getPickupStatus, getJourneyDetails } from "../api/status";
+import { updatePickupStatus, getPickupStatus, getJourneyDetails, recordDeparture } from "../api/status";
 import { getChildren } from "../api/children";
 import useAuth from "../auth/useAuth";
+import apiClient from "../api/client";
 
-const STATUS_FLOW = ["pending", "picked", "dropoff", "completed"];
+const STATUS_FLOW = ["pending", "departed", "picked", "arrived", "completed"];
 const STATUS_LABELS = {
-  pending: "Waiting to Start",
+  pending: "Started",
+  departed: "Departed",
   picked: "Picked Up",
-  dropoff: "In Transit",
-  completed: "Arrived",
+  arrived: "Arrived",
+  completed: "Completed",
 };
 const STATUS_COLORS = {
   pending: colors.grey,
+  departed: colors.warning,
   picked: colors.secondary,
-  dropoff: colors.Inprogress,
+  arrived: colors.Inprogress,
   completed: colors.Completed,
 };
 
@@ -92,29 +95,12 @@ export default function StatusTrackingScreen({ route, navigation }) {
 
 
 
-  // Use logged-in user's information
-  const getUserIds = () => {
-    console.log("Current user:", user);
-    
-    if (!user || !user.sub) {
-      console.log("No user logged in, using fallback IDs");
-      return {
-        pickup_id: selectedPickupId,
-        parent_id: "parent-001", // fallback
-        child_id: selectedChild?.id || "child-001", // Use selected child
-        pickup_person_id: "person-001", // fallback
-      };
-    }
-    
-    const userIds = {
+  // Simplified function - backend will get all data from database
+  const getStatusUpdateData = () => {
+    return {
       pickup_id: selectedPickupId,
-      parent_id: user.sub.name || user.sub.id?.toString() || "parent-001", // Use username first, then ID as fallback
-      child_id: selectedChild?.id || "child-001", // Use selected child
-      pickup_person_id: "person-001", // This could be fetched from assigned pickup persons
+      status: null // Will be set when calling the function
     };
-    
-    console.log("Using user IDs:", userIds);
-    return userIds;
   };
 
   // Fetch journey details including child and pickup person info
@@ -194,9 +180,9 @@ export default function StatusTrackingScreen({ route, navigation }) {
   const fetchAllStatuses = async () => {
     try {
       // Get all journeys from the backend
-      const response = await fetch("https://bdf1812b29eb.ngrok-free.app/get_user_journeys");
+      const response = await apiClient.get("/get_user_journeys");
       if (response.ok) {
-        const data = await response.json();
+        const data = response.data;
         if (data.journeys && data.journeys.length > 0) {
           // Extract pickup IDs from journeys
           const journeyIds = data.journeys.map(journey => journey.pickup_id);
@@ -290,43 +276,59 @@ export default function StatusTrackingScreen({ route, navigation }) {
   }, [selectedPickupId]);
 
   const handleAdvanceStatus = async () => {
-    // Determine the next status
-    let nextStatusIndex = statusIndex;
+    // Parents can advance from "Started" to "Departed", "Picked Up" to "Arrived", or "Arrived" to "Completed"
+    let nextStatus;
+    let nextStatusIndex;
     
-    // If there's no current status, start with 'pending'
-    if (statusIndex === -1) {
-      nextStatusIndex = 0; // 'pending' - first status
-    } else if (statusIndex < STATUS_FLOW.length - 1) {
-      nextStatusIndex = statusIndex + 1; // Advance to next status
+    if (statusIndex === 0) {
+      // From "Started" (pending) to "Departed"
+      nextStatus = "departed";
+      nextStatusIndex = 1;
+    } else if (statusIndex === 2) {
+      // From "Picked Up" to "Arrived"
+      nextStatus = "arrived";
+      nextStatusIndex = 3;
+    } else if (statusIndex === 3) {
+      // From "Arrived" to "Completed"
+      nextStatus = "completed";
+      nextStatusIndex = 4;
     } else {
-      return; // Already at the final status
+      setError("School admin will handle status updates. Please wait for pickup confirmation.");
+      return;
     }
+    
     setLoading(true);
     setError(null);
     try {
-      const userIds = getUserIds();
-      console.log("Sending status update:", {
-        pickup_id: selectedPickupId,
-        parent_id: userIds.parent_id,
-        child_id: userIds.child_id,
-        pickup_person_id: userIds.pickup_person_id,
-        status: STATUS_FLOW[nextStatusIndex],
-      });
+      const statusUpdateData = getStatusUpdateData();
+      statusUpdateData.status = nextStatus;
       
-      const res = await updatePickupStatus({
-        pickup_id: selectedPickupId,
-        parent_id: userIds.parent_id,
-        child_id: userIds.child_id,
-        pickup_person_id: userIds.pickup_person_id,
-        status: STATUS_FLOW[nextStatusIndex],
-      });
+      console.log("📱 MOBILE APP - Status Update Request:");
+      console.log("📤 Pickup ID:", selectedPickupId);
+      console.log("📤 Status:", nextStatus);
+      console.log("📤 Full request data:", JSON.stringify(statusUpdateData, null, 2));
+      
+      const res = await updatePickupStatus(statusUpdateData);
+      
+      console.log("📱 MOBILE APP - Status Update Response:");
+      console.log("📥 Response OK:", res.ok);
+      console.log("📥 Response Data:", res.data);
+      console.log("📥 Response Error:", res.error);
       
       if (res.ok) {
-        setStatusIndex(nextStatusIndex);
-        setStatusTimestamp(res.data?.timestamp || new Date().toISOString());
-        // Update the journey statuses
-        fetchAllStatuses();
-      } else {
+          setStatusIndex(nextStatusIndex);
+          setStatusTimestamp(res.data?.timestamp || new Date().toISOString());
+          // Update the journey statuses
+          fetchAllStatuses();
+          
+          if (nextStatus === "departed") {
+            Alert.alert("Success", "Departure recorded! School admin will handle pickup.");
+          } else if (nextStatus === "arrived") {
+            Alert.alert("Success", "Arrival recorded! Child has reached the destination.");
+          } else if (nextStatus === "completed") {
+            Alert.alert("Success", "Journey completed! Child has arrived safely.");
+          }
+        } else {
         setError(getFriendlyErrorMessage(res.data?.error || "Failed to update status"));
       }
     } catch (e) {
@@ -399,11 +401,17 @@ export default function StatusTrackingScreen({ route, navigation }) {
 
   // Update button logic to handle status transitions
   let nextStatusLabel = null;
-  if (statusIndex === -1) {
-    nextStatusLabel = STATUS_LABELS[STATUS_FLOW[0]]; // 'pending' - start journey
-  } else if (statusIndex < STATUS_FLOW.length - 1) {
-    nextStatusLabel = STATUS_LABELS[STATUS_FLOW[statusIndex + 1]]; // Next status
+  if (statusIndex === 0) {
+    // From "Started" to "Departed"
+    nextStatusLabel = STATUS_LABELS["departed"];
+  } else if (statusIndex === 2) {
+    // From "Picked Up" to "Arrived"
+    nextStatusLabel = STATUS_LABELS["arrived"];
+  } else if (statusIndex === 3) {
+    // From "Arrived" to "Completed"
+    nextStatusLabel = STATUS_LABELS["completed"];
   }
+  // Parents cannot advance from "Departed" (school admin handles that)
 
   // Helper to format timestamp
   function formatTimestamp(ts) {
@@ -532,7 +540,7 @@ export default function StatusTrackingScreen({ route, navigation }) {
         <View style={styles.buttonContainer}>
           {selectedPickupId && nextStatusLabel && (
             <AppButton
-              title={loading ? "Updating..." : `Next: ${nextStatusLabel}`}
+              title={loading ? "Updating..." : (statusIndex === 0 ? "Record Departure" : statusIndex === 2 ? "Mark as Arrived" : "Mark as Completed")}
               onPress={handleAdvanceStatus}
               color="primary"
               disabled={loading}

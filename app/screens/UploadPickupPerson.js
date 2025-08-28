@@ -178,17 +178,17 @@ const PickupManagerScreen = ({ navigation }) => {
       }
 
       // Use the API client for proper authentication
-      const response = await fetch("https://bdf1812b29eb.ngrok-free.app/api/assign-pickup", {
-        method: "POST",
-        headers,
-        body: formData,
+      const response = await apiClient.post("/api/assign-pickup", formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = response.data;
         setQrUrl(data.pickup_url);
       } else {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(response.error || "Failed to assign pickup");
       }
     } catch (error) {
       console.log("Submit error:", error);

@@ -5,17 +5,19 @@ import AppText from "../components/AppText";
 import colors from "../config/colors";
 import { getPickupStatus } from "../api/status";
 
-const STATUS_FLOW = ["pending", "picked", "dropoff", "completed"];
+const STATUS_FLOW = ["pending", "departed", "picked", "arrived", "completed"];
 const STATUS_LABELS = {
-  pending: "Waiting to Start",
+  pending: "Started",
+  departed: "Departed",
   picked: "Picked Up",
-  dropoff: "In Transit",
-  completed: "Arrived",
+  arrived: "Arrived",
+  completed: "Completed",
 };
 const STATUS_COLORS = {
   pending: colors.grey,
+  departed: colors.warning,
   picked: colors.secondary,
-  dropoff: colors.Inprogress,
+  arrived: colors.Inprogress,
   completed: colors.Completed,
 };
 

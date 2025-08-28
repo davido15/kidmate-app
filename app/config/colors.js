@@ -10,6 +10,7 @@ export default {
   Cancelled:"#f44242",
   Created:"#f44241",
   Inprogress:"#f60",
-  Assigned:"#4285f4"
+  Assigned:"#4285f4",
+  warning:"#ffc107"
   
 };

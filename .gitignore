@@ -104,10 +104,6 @@ backup/
 backups/
 
 # ===== Large media files =====
-*.jpg
-*.jpeg
-*.png
-*.gif
 *.mp4
 *.avi
 *.mov

@@ -358,7 +358,7 @@ function HomeScreen({ navigation }) {
         {selectedChild && (
           <View style={styles.section}>
             <View style={styles.profileCard}>
-              <Image source={require("../assets/student.png")} style={styles.profileImage} />
+              <Image source={require("../assets/student.jpg")} style={styles.profileImage} />
               <View style={styles.profileInfo}>
                 <Text style={styles.profileName}>{selectedChild.name}</Text>
                 <Text style={styles.profileId}>🎓 ID: {selectedChild.id}</Text>

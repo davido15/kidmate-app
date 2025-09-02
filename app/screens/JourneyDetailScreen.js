@@ -43,7 +43,7 @@ export default function JourneyDetailScreen({ route, navigation }) {
   const childData = {
     name: `Child ID: ${child_id || 'N/A'}`,
     age: "Student",
-    image: require("../assets/student.png"), // Using existing asset
+            image: require("../assets/student.jpg"), // Using existing asset
   };
   
   const pickerData = {

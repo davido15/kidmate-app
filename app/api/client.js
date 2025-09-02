@@ -2,7 +2,7 @@ import cache from "../utility/cache";
 import authStorage from "../auth/storage";
 
 // Add baseURL for all requests
-const baseURL = "https://8e05f2e522d9.ngrok-free.app";
+const baseURL = "https://kidmate-backend.onrender.com";
 
 // Create a simple function for making GET requests
 const get = async (url, params, config = {}) => {

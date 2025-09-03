@@ -7,40 +7,33 @@ import {
   TouchableOpacity,
   Image,
   Platform,
-  Share,
   KeyboardAvoidingView,
   ScrollView,
   Alert,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { captureRef } from "react-native-view-shot";
-import * as Sharing from "expo-sharing";
-import QRCode from "react-native-qrcode-svg";
+
 import Constants from "expo-constants";
 import colors from "../config/colors";
 import { getChildren } from "../api/children";
 import apiClient from "../api/client";
 import authStorage from "../auth/storage";
-import GooglePlacesInput from "../components/GooglePlacesInput";
+
+import AppTextInput from "../components/AppTextInput";
 
 const PickupManagerScreen = ({ navigation }) => {
   const [name, setName] = useState("");
   const [pickupId, setPickupId] = useState("");
-  const [kidId, setKidId] = useState("");
+
   const [phone, setPhone] = useState("");
   const [image, setImage] = useState(null);
-  const [qrUrl, setQrUrl] = useState(null);
+
   const [loading, setLoading] = useState(false);
   const [children, setChildren] = useState([]);
   const [showChildSelector, setShowChildSelector] = useState(false);
   const [selectedChild, setSelectedChild] = useState(null);
   
-  // State for drop-off location
-  const [dropoffLocation, setDropoffLocation] = useState("");
-  const [dropoffLocationName, setDropoffLocationName] = useState("");
-  const [dropoffLocationAddress, setDropoffLocationAddress] = useState("");
-  const [dropoffLatitude, setDropoffLatitude] = useState(null);
-  const [dropoffLongitude, setDropoffLongitude] = useState(null);
+
 
   // Add header with back button (only show if not the initial screen)
   React.useLayoutEffect(() => {
@@ -51,7 +44,7 @@ const PickupManagerScreen = ({ navigation }) => {
     });
   }, [navigation]);
 
-  const qrRef = useRef();
+
 
   // Fetch children for the authenticated parent
   const fetchChildren = async () => {
@@ -96,28 +89,7 @@ const PickupManagerScreen = ({ navigation }) => {
     }
   };
 
-  const handleDropoffLocationSelect = (locationData) => {
-    // Store both the display text and the structured data
-    setDropoffLocation(locationData.description);
-    setDropoffLocationName(locationData.name);
-    setDropoffLocationAddress(locationData.formatted_address);
-    setDropoffLatitude(locationData.latitude);
-    setDropoffLongitude(locationData.longitude);
-    
-    console.log("📍 Dropoff location selected:", {
-      name: locationData.name,
-      address: locationData.formatted_address,
-      coordinates: locationData.latitude && locationData.longitude 
-        ? `${locationData.latitude}, ${locationData.longitude}` 
-        : 'Coordinates not available',
-      full_description: locationData.description
-    });
-    
-    // Show warning if coordinates are missing
-    if (!locationData.latitude || !locationData.longitude) {
-      console.warn("⚠️ Warning: Location coordinates are missing for:", locationData.description);
-    }
-  };
+
 
   const handleSubmit = async () => {
     try {
@@ -131,15 +103,7 @@ const PickupManagerScreen = ({ navigation }) => {
         return;
       }
 
-      if (!dropoffLocation) {
-        Alert.alert("Error", "Please select a drop-off location.");
-        return;
-      }
 
-      if (!dropoffLatitude || !dropoffLongitude) {
-        Alert.alert("Error", "Location coordinates are missing. Please select a valid location.");
-        return;
-      }
 
       setLoading(true);
       const formData = new FormData();
@@ -148,18 +112,13 @@ const PickupManagerScreen = ({ navigation }) => {
       formData.append("pickup_id", pickupId);
       formData.append("kid_id", selectedChild.id);
       formData.append("phone", phone);
-      formData.append("dropoff_location", dropoffLocation);
-      formData.append("dropoff_latitude", dropoffLatitude.toString());
-      formData.append("dropoff_longitude", dropoffLongitude.toString());
+
       
       console.log("📤 Sending to backend:", {
         name,
         pickup_id: pickupId,
         kid_id: selectedChild.id,
-        phone,
-        dropoff_location: dropoffLocation,
-        dropoff_latitude: dropoffLatitude,
-        dropoff_longitude: dropoffLongitude
+        phone
       });
       formData.append("image", {
         uri: image.uri,
@@ -167,26 +126,21 @@ const PickupManagerScreen = ({ navigation }) => {
         type: "image/jpeg",
       });
 
-      // Get authentication token
-      const authToken = await authStorage.getToken();
-      const headers = {
-        "Content-Type": "multipart/form-data",
-      };
-      
-      if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
-      }
-
       // Use the API client for proper authentication
-      const response = await apiClient.post("/api/assign-pickup", formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        }
-      });
+      const response = await apiClient.post("/api/assign-pickup", formData);
 
       if (response.ok) {
-        const data = response.data;
-        setQrUrl(data.pickup_url);
+        // Show success message and navigate to pickup persons list
+        Alert.alert(
+          "Success", 
+          "Pickup person added successfully!", 
+          [
+            {
+              text: "OK",
+              onPress: () => navigation.navigate("PickupPersonsList")
+            }
+          ]
+        );
       } else {
         throw new Error(response.error || "Failed to assign pickup");
       }
@@ -201,51 +155,20 @@ const PickupManagerScreen = ({ navigation }) => {
   const handleReset = () => {
     setName("");
     setPickupId("");
-    setKidId("");
+
     setPhone("");
     setImage(null);
-    setQrUrl(null);
     setSelectedChild(null);
     setShowChildSelector(false);
-    setDropoffLocation("");
-    setDropoffLocationName("");
-    setDropoffLocationAddress("");
-    setDropoffLatitude(null);
-    setDropoffLongitude(null);
   };
 
   const handleChildSelection = (child) => {
     setSelectedChild(child);
-    setKidId(child.id.toString());
+
     setShowChildSelector(false);
   };
 
-  const handleShare = async () => {
-    try {
-      if (!qrRef.current) return;
 
-      const uri = await captureRef(qrRef, {
-        format: "png",
-        quality: 1,
-      });
-
-      if (Platform.OS === "ios" || Platform.OS === "android") {
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(uri);
-        } else {
-          alert("Sharing not supported on this platform");
-        }
-      } else {
-        await Share.share({
-          url: uri,
-          message: "Pickup QR code",
-        });
-      }
-    } catch (error) {
-      console.log("Error sharing QR:", error);
-      alert("Error sharing QR code");
-    }
-  };
 
   return (
     <KeyboardAvoidingView
@@ -253,7 +176,7 @@ const PickupManagerScreen = ({ navigation }) => {
       behavior={Platform.OS === "ios" ? "padding" : null}
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Create New Journey</Text>
+        <Text style={styles.headerTitle}>Add Pickup Person</Text>
         <TouchableOpacity
           style={styles.viewAllButton}
           onPress={() => navigation.navigate("PickupPersonsList")}
@@ -262,27 +185,30 @@ const PickupManagerScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {!qrUrl ? (
+
         <ScrollView 
           style={styles.scrollView} 
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollViewContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.title}>Create New Pickup Journey</Text>
+
           <View style={styles.form}>
-            <TextInput
-              style={styles.input}
-              placeholder="Full Name"
+            <Text style={styles.label}>👤 Full Name</Text>
+            <AppTextInput
+              icon="account"
+              placeholder="Enter full name"
               value={name}
               onChangeText={setName}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Pickup ID"
+            <Text style={styles.label}>🆔 Ghana Card</Text>
+            <AppTextInput
+              icon="card-account-details"
+              placeholder="Enter Ghana Card number"
               value={pickupId}
               onChangeText={setPickupId}
             />
+            <Text style={styles.label}>👶 Select Child</Text>
             <TouchableOpacity
               style={styles.dropdownButton}
               onPress={() => setShowChildSelector(true)}
@@ -291,46 +217,18 @@ const PickupManagerScreen = ({ navigation }) => {
                 {selectedChild ? `${selectedChild.name} (ID: ${selectedChild.id})` : "Select Child"}
               </Text>
             </TouchableOpacity>
-            <TextInput
-              style={styles.input}
-              placeholder="Phone Number"
+            <Text style={styles.label}>📱 Phone Number</Text>
+            <AppTextInput
+              icon="phone"
+              placeholder="Enter phone number"
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
             />
 
-            {/* Drop-off Location Section */}
-            <View style={styles.locationSection}>
-              <Text style={styles.sectionTitle}>📍 Drop-off Location</Text>
-              <Text style={styles.sectionSubtitle}>Search and select where the child should be dropped off</Text>
-              <GooglePlacesInput
-                placeholder="Search for drop-off location (e.g., school, home, restaurant)..."
-                onLocationSelect={handleDropoffLocationSelect}
-                containerStyle={styles.googlePlacesContainer}
-                textInputStyle={styles.googlePlacesInput}
-              />
-              {dropoffLocation && (
-                <View style={styles.selectedLocation}>
-                  <Text style={styles.selectedLocationText}>
-                    ✅ Selected Location
-                  </Text>
-                  {dropoffLocationName && (
-                    <Text style={styles.locationNameText}>
-                      🏢 {dropoffLocationName}
-                    </Text>
-                  )}
-                  <Text style={styles.locationAddressText}>
-                    📍 {dropoffLocationAddress}
-                  </Text>
-                  {dropoffLatitude && dropoffLongitude && (
-                    <Text style={styles.coordinatesText}>
-                      📊 Coordinates: {dropoffLatitude.toFixed(6)}, {dropoffLongitude.toFixed(6)}
-                    </Text>
-                  )}
-                </View>
-              )}
-            </View>
 
+
+            <Text style={styles.label}>📷 Profile Image</Text>
             <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
               <Text style={styles.imagePickerText}>
                 {image ? "Change Image" : "Pick Image from Gallery"}
@@ -353,26 +251,6 @@ const PickupManagerScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      ) : (
-        <View style={styles.qrSection}>
-          <Text style={styles.subtitle}>QR Code for Pickup</Text>
-          <View ref={qrRef} collapsable={false} style={styles.qrContainer}>
-            <QRCode value={qrUrl} size={200} />
-          </View>
-          <Text style={styles.qrText}>{qrUrl}</Text>
-
-          <TouchableOpacity style={styles.button} onPress={handleReset}>
-            <Text style={styles.buttonText}>Update Info</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, styles.share]}
-            onPress={handleShare}
-          >
-            <Text style={styles.buttonText}>Share QR Code</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
       {/* Child Selector Modal */}
       {showChildSelector && (
@@ -414,10 +292,12 @@ const styles = StyleSheet.create({
   scrollViewContent: {
     paddingBottom: 100, // Add extra padding at bottom for submit button
   },
-  title: { 
-    fontSize: 22, 
-    fontWeight: "bold", 
-    marginBottom: 10,
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+    marginTop: 15,
+    color: "#333",
     paddingHorizontal: 20,
   },
   form: { 
@@ -471,42 +351,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 16,
   },
-  qrSection: {
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 20,
-  },
-  qrContainer: {
-    backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 10,
-  },
-  qrText: {
-    fontSize: 12,
-    color: "#666",
-    marginVertical: 10,
-    textAlign: "center",
-  },
-  button: {
-    backgroundColor: colors.secondary,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginTop: 20,
-    borderRadius: 6,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  share: {
-    backgroundColor: "#00b894",
-  },
+
   dropdownButton: {
     borderWidth: 1,
     borderColor: "#ccc",
@@ -610,63 +455,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  locationSection: {
-    marginTop: 15,
-    paddingHorizontal: 5,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.dark,
-    marginBottom: 5,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: colors.medium,
-    marginBottom: 10,
-    fontStyle: 'italic',
-  },
-  googlePlacesContainer: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    backgroundColor: "#f9f9f9",
-  },
-  googlePlacesInput: {
-    fontSize: 16,
-    color: "#333",
-  },
-  selectedLocation: {
-    backgroundColor: colors.light,
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: colors.medium,
-  },
-  selectedLocationText: {
-    fontSize: 14,
-    color: colors.dark,
-    fontWeight: 'bold',
-  },
-  coordinatesText: {
-    fontSize: 12,
-    color: colors.medium,
-    marginTop: 5,
-  },
-  locationNameText: {
-    fontSize: 16,
-    color: colors.dark,
-    fontWeight: '600',
-    marginTop: 5,
-  },
-  locationAddressText: {
-    fontSize: 14,
-    color: colors.medium,
-    marginTop: 2,
-  },
+
 });
 
 export default PickupManagerScreen;

@@ -149,8 +149,8 @@ export default function CreateJourneyScreen({ route, navigation }) {
         const data = response.data;
         
         // Generate QR code URL for journey verification
-        // Use the PHP web URL for verification (not the API URL)
-        const baseUrl = "http://localhost:8888/KidMate";
+        // Use the new backend URL for verification
+        const baseUrl = "https://48974742e38f.ngrok-free.app";
         const verificationUrl = `${baseUrl}/verify.php?pickup_id=${data.pickup_id}`;
         
         setQrUrl(verificationUrl);

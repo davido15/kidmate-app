@@ -4,12 +4,27 @@
     "slug": "kidmate",
     "version": "1.0.0",
     "orientation": "portrait",
-    // "icon": "./assets/icon.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.outrankconsult.kidmate",
+      "buildNumber": "1"
+    },
     "android": {
       "package": "com.outrankconsult.kidmate",
       "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_FINE_LOCATION",
@@ -21,6 +36,9 @@
         "android.permission.RECORD_AUDIO"
       ]
     },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
     "plugins": [
       "expo-secure-store",
       "expo-location",
@@ -28,6 +46,9 @@
       "expo-notifications"
     ],
     "extra": {
+      "bugsnag": {
+        "apiKey": "a83c56e59d30b5642a4103fc61565c69"
+      },
       "eas": {
         "projectId": "1e4024a7-1c6c-4728-8a03-e0842923179f"
       }

@@ -150,8 +150,8 @@ export default function CreateJourneyScreen({ route, navigation }) {
         
         // Generate QR code URL for journey verification
         // Use the Render backend URL for verification
-        const baseUrl = "https://kidmate-backend.onrender.com";
-        const verificationUrl = `${baseUrl}/verify.php?pickup_id=${data.pickup_id}`;
+          const baseUrl = "https://kidmateapp.com";
+  const verificationUrl = `${baseUrl}/verify.php?pickup_id=${data.pickup_id}`;
         
         setQrUrl(verificationUrl);
         setCreatedJourney({
